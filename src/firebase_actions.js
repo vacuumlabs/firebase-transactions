@@ -1,4 +1,5 @@
 import i from 'immutable'
+import {Promise} from 'bluebird'
 
 export function toJS(value) {
   return (value && value.toJS) ? value.toJS() : value

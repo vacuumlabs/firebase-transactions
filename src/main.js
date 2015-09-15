@@ -1,10 +1,29 @@
 //import {Map, List, fromJS} from 'immutable'
 import Firebase from 'firebase'
-
+import transactor from './transactor'
 const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebase = new Firebase(firebaseUrl)
 
-var rand = myArray[Math.floor(Math.random() * myArray.length)];
+
+const transactions = {
+  pay: ({read, set, push}, data) => {
+    let userFrom, userTo
+    return read(['user', data.userFrom])
+    .then((_userFrom) => {
+      userFrom = _userFrom
+      return read(['user', data.userTo])
+    }).then((_userTo) => {
+      userTo = _userTo
+      return set(['user', data.userFrom, 'credit'], userFrom.credit - data.credit)
+    }).then(() => {
+      return set(['user', data.userTo, 'credit'], userTo.credit + data.credit)
+    })
+  }
+}
+
+function randomChoice(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
 
 function getRandomUser() {
   return {
@@ -13,7 +32,11 @@ function getRandomUser() {
   }
 }
 
-function getRandomTransaction(userIds) {
+function getRandomTransaction(usersIds) {
+  const userFrom = randomChoice(usersIds)
+  const userTo = randomChoice(usersIds)
+  const credit = Math.floor(Math.random() * 100)
+  return {userFrom, userTo, credit, type: 'pay'}
 }
 
 function demo() {
@@ -21,7 +44,7 @@ function demo() {
   const userRef = firebase.child('user')
   const usersIds = []
   for (let i = 0; i < 100; i++) {
-    usersIds.push(userRef.push(getRandomUser()))
+    usersIds.push(userRef.push(getRandomUser()).key())
   }
 
   const transactionRef = firebase.child('transaction')
@@ -29,12 +52,10 @@ function demo() {
     transactionRef.push(getRandomTransaction(usersIds))
   }
 
+  transactor(firebase, transactions)
+
 }
 
 demo()
 
-//transactor(firebase, {
-//  'payOrder': (read, write, push) => {},
-//  'transferMoney': (read, write, push) => {},
-//}).run()
 

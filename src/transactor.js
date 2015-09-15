@@ -1,5 +1,13 @@
-import {read, set} from 'firebase_actions'
-export function transactor(firebase, transactionConfig) {
+import {read, set} from './firebase_actions'
+export default function transactor(firebase, transactionConfig) {
+
+  function trRead(path) {
+    return read(firebase.child(path.join('/')))
+  }
+
+  function trSet(path, value) {
+    return set(firebase.child(path.join('/')), value)
+  }
 
   function push() {}
 
@@ -19,24 +27,25 @@ export function transactor(firebase, transactionConfig) {
   })
 
   function processOne() {
-    firstTransaction()
+    return firstTransaction()
     .then(({id, data}) => {
+      console.log('got data', data)
       let fn = transactionConfig[data.type]
-      return fn({read, set, push}, data)
+      return fn({read: trRead, set: trSet, push}, data)
         .then(() => {
           firebase.child('finished_transaction').child(id).set(data)
-          firebase.child('transaction').get(id).remove()
+          firebase.child('transaction').child(id).remove()
         })
     })
   }
 
   function firstTransaction() {
-    return read(firebase.child('transaction').orderByKey.limitToFirst(1))
+    return read(firebase.child('transaction').orderByKey().limitToFirst(1))
       .then((data) => {
         if (data == null) return null
         const id = Object.keys(data)[0]
-        const transactionData = data[id]
-        return {id, transactionData}
+        const _data = data[id]
+        return {id, data: _data}
       }).catch((e) => console.error(e.stack)) // eslint-disable-line no-console
   }
 
