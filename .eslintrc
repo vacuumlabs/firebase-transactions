@@ -118,5 +118,8 @@
   ],
   "ecmaFeatures": {
     "jsx": true
-  }
+  },
+  "env": {
+    "node": true
+  },
 }
