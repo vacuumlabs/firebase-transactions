@@ -15,6 +15,7 @@
     "babel-loader": "^5.0.0",
     "babel-plugin-extensible-destructuring": "^1.0.2",
     "bluebird": "^2.10.0",
-    "firebase": "^2.2.9"
+    "firebase": "^2.2.9",
+    "heap": "^0.2.6"
   }
 }
