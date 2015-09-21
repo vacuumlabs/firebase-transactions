@@ -1,11 +1,17 @@
 import * as i from 'immutable'
 
+//TODO:
+// * urobit class
+// * canRead should allow for my own writes, ..
+// * multiple reads/writes on one path
+// * tests
+
 let state = i.Map({
   lastId: 0,
   inProgress: i.Set(),
   scheduled: i.Set(),
-  readsByTrx: i.Map(),
-  writesByTrx: i.Map(),
+  readsByTrx: i.Map(), // {id: [path1, path2, ..]}
+  writesByTrx: i.Map(), // {id: [(path, value), (path2, value2),..}
   readsByPath: i.Map(),
   writesByPath: i.Map(),
 })
@@ -67,7 +73,7 @@ function addId(id, path, map) {
   return map.setIn(path, i.Set(map.getIn(path, i.List()).add(id)))
 }
 
-export function addRead(id, path) {
+export function addRead(state, id, path) {
   let {readsByPath, readsByTrx} = state
   return {
     ...state,
