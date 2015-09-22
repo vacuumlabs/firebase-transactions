@@ -1,31 +1,29 @@
-import * as i from 'immutable'
+import {List, Map, Set, union} from 'immutable'
 
-//TODO: tests
+//TODO:
+//  tests
+//  registry
 
-export class Accountant {
-  construct() {
+export class Registry {
+
+  constructor() {
     this.lastId = 0
-    this.inProgress = i.Set()
-    this.scheduled = i.Set()
-    this.readsByTrx = i.Map({}) // {id: [path1, path2, ..]}
-    this.writesByTrx = i.Map() // {id: [(path, value), (path2, value2),..}
-    this.readsByPath = i.Map({ids: i.Set(), keys: i.Map()}) // {key1: {readBy: set(id1, id2,..), keys: {key2: {readBy...}}}}
-    this.writesByPath = i.Map({ids: i.Set(), keys: i.Map()})
+    // tracks transaction being run (not yet aborted or commited)
+    this.inProgress = Set()
+    this.readsByTrx = Map() // {id: [path1, path2, ..]}
+    this.writesByTrx = Map() // {id: [(path, value), (path2, value2),..}
+    this.readsByPath = Map({ids: Set(), keys: Map()}) // {key1: {readBy: set(id1, id2,..), keys: {key2: {readBy...}}}}
+    this.writesByPath = Map({ids: Set(), keys: Map()})
   }
 
-  open(id=null) {
+  open(id = null) {
     id = id == null ? ++this.lastId : id
     this.inProgress = this.inProgress.add(id)
-    this.scheduled = this.scheduled.delete(id)
     return id
   }
 
   isInProgress(id) {
     return this.inProgress.has(id)
-  }
-
-  isScheduled(id) {
-    return this.scheduled.has(id)
   }
 
   _path(path) {
@@ -36,74 +34,81 @@ export class Accountant {
   }
 
   _getIn(map, path) {
-    return map.getIn(this._path(path), i.Map())
+    return map.getIn(this._path(path), Map())
   }
 
   _get(map, key) {
     return this._getIn(map, [key])
   }
 
-  _getIds(map, path) {
-    return map.getIn(this._path(path).push('ids'), i.Set())
+  _getIds(map, path = []) {
+    return map.getIn(this._path(path).push('ids'), Set())
   }
+
+  _getKeys(map, path = []) {
+    return map.getIn(this._path(path).push('keys'), Map())
+  }
+
+  //_updateIn(map, path,
 
   _addId(id, map, path) {
     return map.setIn(
-        this._path(path).push('ids'),
-        this._getIds(map, path).add(id))
+      this._path(path).push('ids'),
+      this._getIds(map, path).add(id))
   }
 
   _deleteId(id, map, path) {
-    return map.setIn(
+    return this._prune(
+      map.setIn(
         this._path(path).push('ids'),
-        this._getIds(map, path).delete(id))
+        this._getIds(map, path).delete(id)),
+      path)
   }
 
   _prune(map, path) {
     if (path.size() === 0) return map
     let {keys, ids} = this._getIn(map, path)
-    let p = this._path(path)
     if ((keys == null || keys.size() === 0) &&
         (ids == null || ids.size() === 0)) {
-      return this._prune(map.deleteIn(p), p.slice(0, p.size() - 1))
+      return this._prune(
+        map.deleteIn(this._path(path)),
+        path.slice(0, path.size() - 1))
     }
   }
 
   _allIds(map) {
-    return i.union(
-        this._getIds(map, []),
-        i.union(this._getIn(map, []).values().map((v) => this._allIds(v))))
+    return union(
+      this._getIds(map),
+      union(this._getKeys(map).values().map((v) => this._allIds(v))))
   }
 
   _idsAlongPath(map, path) {
-    if (map == null) return i.Set()
+    if (map == null) return Set()
     if (path.size() === 0) return this._allIds(map)
-    return i.union(
-        this._getIds(map, []),
-        this._idsAlongPath(this._get(map, path[0]), path.slice(1)))
+    return union(
+      this._getIds(map),
+      this._idsAlongPath(this._get(map, path[0]), path.slice(1)))
   }
 
-  canRead(id, path) {
-    return !this._idsAlongPath(this.writesByPath, path).subtract(id).isEmpty()
+  conflictingWithRead(id, path) {
+    return !this._idsAlongPath(this.writesByPath, path).subtract(id)
   }
 
-  canWrite(id, path) {
-    return !this._idsAlongPath(this.readsByPath, path).subtract(id).isEmpty()
+  conflictingWithWrite(id, path) {
+    return !this._idsAlongPath(this.readsByPath, path).subtract(id)
   }
 
-  _deletePath(id, map, path) {
-    return this._prune(this._deleteId(id, map, path))
-  }
-
-  deletePaths(map, paths) {
-    return paths.reduce((m, p) => this._deletePath(m, p), map)
+  deletePaths(id, map, paths) {
+    return paths.reduce((m, p) => this._deleteId(id, m, p), map)
   }
 
   cleanup(id) {
     this.readsByPath = this.deletePaths(
-        this.readsByPath, this.readsByTrx.get(id))
+        id, this.readsByPath, this.readsByTrx.get(id))
     this.writesByPath = this.deletePaths(
-        this.writesByPath, this.writesByTrx.get(id))
+        id,
+        this.writesByPath,
+        this.writesByTrx.get(id).map((x) => x.get('path')))
     this.readsByTrx = this.readsByTrx.delete(id)
     this.writesByTrx = this.writesByTrx.delete(id)
     this.inProgress = this.inProgress.delete(id)
@@ -112,7 +117,7 @@ export class Accountant {
   addRead(id, path) {
     this.readsByTrx = this.readsByTrx.set(
         id,
-        this.readsByTrx.get(id, i.List()).push(path))
+        this.readsByTrx.get(id, List()).push(path))
 
     this.readsByPath = this._addId(id, this.readsByPath, path)
   }
@@ -120,13 +125,13 @@ export class Accountant {
   addWrite(id, path, value) {
     this.writesByTrx = this.writesByTrx.set(
         id,
-        this.writesByTrx.get(id, i.List()).push({path, value}))
+        this.writesByTrx.get(id, List()).push(Map({path, value})))
 
     this.writesByPath = this._addId(id, this.writesByPath, path)
   }
 
   writes(id) {
-    return this.writesByTrx.get(id, i.List())
+    return this.writesByTrx.get(id, List())
   }
 
   _prefix(list1, list2) {
