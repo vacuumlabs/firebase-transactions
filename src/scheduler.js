@@ -1,39 +1,42 @@
 import Heap from 'heap'
+import {Promise} from 'bluebird'
 
 export class Scheduler {
-  construct() {
+  constructor() {
     this.scheduled = new Heap((trx) => trx.time)
-    this.notify = null
+    this.pending = null
+    this.last = Promise.resolve(null)
   }
 
   getOne() {
-    let promises = [
-      new Promise((resolve, reject) => {
-        this.notify = () => this.getOne().then(resolve)
+    this.last = this.last.then(() => {
+      const res = new Promise((resolve, reject) => {
+        this.pending = {resolve, reject}
       })
-    ]
-
-    if (this.scheduled.size() > 0) {
-      let now = new Date().getTime()
-      let time = this.scheduled.peek().time
-      promises.push(
-        new Promise((resolve, reject) => {
-          if (time <= now) {
-            this.notify = null
-            resolve(this.scheduled.pop().fn)
-          } else {
-            setTimeout(() => this.getOne().then(resolve), time - now)
-          }
-        })
-      )
-    }
-
-    return Promise.race(promises)
+      this.check()
+      return res
+    })
+    return this.last
   }
 
-  schedule(fn, time) {
-    this.scheduled.push({fn, time})
-    if (this.notify != null) this.notify()
+  check() {
+    if (this.scheduled.size() > 0) {
+      if (this.scheduled.peek().completed) {
+        if (this.pending != null) {
+          this.pending.resolve(this.scheduled.pop().val)
+          this.pending = null
+        }
+      }
+    }
+  }
+
+  schedule(val, time) {
+    const item = {val, time, completed: false}
+    this.scheduled.push(item)
+    Promise.delay(time).then(() => {
+      item.completed = true
+      this.check()
+    })
   }
 
   size() {
