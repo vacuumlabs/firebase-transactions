@@ -1,8 +1,4 @@
-import {List, Map, Set, union} from 'immutable'
-
-//TODO:
-//  tests
-//  registry
+import {List, Map, Set, fromJS, Iterable} from 'immutable'
 
 export class Registry {
 
@@ -12,8 +8,8 @@ export class Registry {
     this.inProgress = Set()
     this.readsByTrx = Map() // {id: [path1, path2, ..]}
     this.writesByTrx = Map() // {id: [(path, value), (path2, value2),..}
-    this.readsByPath = Map({ids: Set(), keys: Map()}) // {key1: {readBy: set(id1, id2,..), keys: {key2: {readBy...}}}}
-    this.writesByPath = Map({ids: Set(), keys: Map()})
+    this.readsByPath = Map() // {key1: {readBy: set(id1, id2,..), keys: {key2: {readBy...}}}}
+    this.writesByPath = Map()
   }
 
   open(id = null) {
@@ -27,10 +23,13 @@ export class Registry {
   }
 
   _path(path) {
-    if (typeof path === 'object') {
-      return [].concat.apply([], path.map((p) => ['keys', p]))
+    if (Iterable.isIterable(path)) {
+      return path.flatMap((p) => ['keys', p])
+    } else if (typeof path === 'string') {
+      return fromJS(['keys', path])
+    } else {
+      throw new Error(`path must be either string, or immutable iterable, got ${path} instead`)
     }
-    return ['keys', path]
   }
 
   _getIn(map, path) {
@@ -38,20 +37,19 @@ export class Registry {
   }
 
   _get(map, key) {
-    return this._getIn(map, [key])
+    return this._getIn(map, List([key]))
   }
 
-  _getIds(map, path = []) {
+  _getIds(map, path = List()) {
     return map.getIn(this._path(path).push('ids'), Set())
   }
 
-  _getKeys(map, path = []) {
+  _getKeys(map, path = List()) {
     return map.getIn(this._path(path).push('keys'), Map())
   }
 
-  //_updateIn(map, path,
-
   _addId(id, map, path) {
+
     return map.setIn(
       this._path(path).push('ids'),
       this._getIds(map, path).add(id))
@@ -66,45 +64,62 @@ export class Registry {
   }
 
   _prune(map, path) {
-    if (path.size() === 0) return map
-    let {keys, ids} = this._getIn(map, path)
-    if ((keys == null || keys.size() === 0) &&
-        (ids == null || ids.size() === 0)) {
-      return this._prune(
-        map.deleteIn(this._path(path)),
-        path.slice(0, path.size() - 1))
+    let keysIds = this._getIn(map, path) // TODO make immutable destructuring work
+    let keys = keysIds.get('keys')
+    let ids = keysIds.get('ids')
+    if ((keys == null || keys.size === 0) &&
+        (ids == null || ids.size === 0)) {
+      // if the whole map got deleted procede with Map(undefined) === empty Map
+      let _pruned = Map(map.deleteIn(this._path(path)))
+      if (path.size === 0) {
+        return _pruned
+      } else {
+        return this._prune(
+          _pruned,
+          path.slice(0, path.size - 1))
+      }
+    } else {
+      return map
     }
   }
 
+  /* get all transaction ids for the given structure recursively traversing it
+   * from the root to its leaves
+   */
   _allIds(map) {
-    return union(
-      this._getIds(map),
-      union(this._getKeys(map).values().map((v) => this._allIds(v))))
+    return this._getIds(map).union(
+      this._getKeys(map).valueSeq().flatMap((v) => this._allIds(v)))
   }
 
+  /*
+   * gather all the ids along given path plus all the ids in the
+   * subtree rooted in path
+   */
   _idsAlongPath(map, path) {
     if (map == null) return Set()
-    if (path.size() === 0) return this._allIds(map)
-    return union(
-      this._getIds(map),
-      this._idsAlongPath(this._get(map, path[0]), path.slice(1)))
+    if (path.size === 0) return this._allIds(map)
+    return this._getIds(map).union(
+      this._idsAlongPath(this._get(map, path.get(0)), path.slice(1)))
   }
 
-  conflictingWithRead(id, path) {
-    return !this._idsAlongPath(this.writesByPath, path).subtract(id)
+  conflictingWithRead(path) {
+    return this._idsAlongPath(this.writesByPath, fromJS(path))
   }
 
-  conflictingWithWrite(id, path) {
-    return !this._idsAlongPath(this.readsByPath, path).subtract(id)
+  conflictingWithWrite(path) {
+    return this._idsAlongPath(this.readsByPath, fromJS(path))
   }
 
   deletePaths(id, map, paths) {
+    paths = fromJS(paths)
     return paths.reduce((m, p) => this._deleteId(id, m, p), map)
   }
 
   cleanup(id) {
     this.readsByPath = this.deletePaths(
-        id, this.readsByPath, this.readsByTrx.get(id))
+        id,
+        this.readsByPath,
+        this.readsByTrx.get(id, []))
     this.writesByPath = this.deletePaths(
         id,
         this.writesByPath,
@@ -115,6 +130,7 @@ export class Registry {
   }
 
   addRead(id, path) {
+    path = fromJS(path)
     this.readsByTrx = this.readsByTrx.set(
         id,
         this.readsByTrx.get(id, List()).push(path))
@@ -123,6 +139,7 @@ export class Registry {
   }
 
   addWrite(id, path, value) {
+    path = fromJS(path)
     this.writesByTrx = this.writesByTrx.set(
         id,
         this.writesByTrx.get(id, List()).push(Map({path, value})))
@@ -137,25 +154,34 @@ export class Registry {
   _prefix(list1, list2) {
     let i = 0
     while (list1.get(i) === list2.get(i) &&
-        i < Math.max(list1.size(), list2.size())) i++
-    return {size: i, list: list1.slice(0, i + 1)}
+        i < Math.min(list1.size, list2.size)) i++
+    return list1.slice(0, i)
   }
 
   readAsIfTrx(id, path, firebaseValue) {
+    path = fromJS(path)
+    firebaseValue = fromJS(firebaseValue)
     let requestedPath = path
 
-    function apply(currVal, data) {
-      let {path, value} = data
-      let {list, size} = this._prefix(path, requestedPath)
+    const apply = (currVal, write) => {
+      // TODO immutable desctructuring
+      let path = write.get('path')
+      let value = fromJS(write.get('value'))
+      let list = this._prefix(path, requestedPath)
       if (list.equals(path)) {
-        return value.getIn(requestedPath.slice(size))
+        return value.getIn(requestedPath.slice(list.size))
       }
       if (list.equals(requestedPath)) {
-        return currVal.setIn(path.slice(size), value)
+        return currVal.setIn(path.slice(list.size), value)
       }
       return currVal
     }
 
-    return this.writes(id).reduce(apply, firebaseValue)
+    let res = this.writes(id).reduce(apply, firebaseValue)
+    if (typeof res === 'object') {
+      res = res.toJS()
+    }
+
+    return res
   }
 }
