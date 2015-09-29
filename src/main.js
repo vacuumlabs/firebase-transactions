@@ -1,6 +1,6 @@
 //import {Map, List, fromJS} from 'immutable'
 import Firebase from 'firebase'
-import transactor from './transactor'
+import transactor from './naive_transactor'
 const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebase = new Firebase(firebaseUrl)
 
