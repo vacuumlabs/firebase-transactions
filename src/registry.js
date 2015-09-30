@@ -12,10 +12,8 @@ export class Registry {
     this.writesByPath = Map()
   }
 
-  open(id = null) {
-    id = id == null ? ++this.lastId : id
+  open(id) {
     this.inProgress = this.inProgress.add(id)
-    return id
   }
 
   isInProgress(id) {
@@ -123,7 +121,7 @@ export class Registry {
     this.writesByPath = this.deletePaths(
         id,
         this.writesByPath,
-        this.writesByTrx.get(id).map((x) => x.get('path')))
+        this.writesByTrx.get(id, []).map((x) => x.get('path')))
     this.readsByTrx = this.readsByTrx.delete(id)
     this.writesByTrx = this.writesByTrx.delete(id)
     this.inProgress = this.inProgress.delete(id)
@@ -169,6 +167,9 @@ export class Registry {
       let value = fromJS(write.get('value'))
       let list = this._prefix(path, requestedPath)
       if (list.equals(path)) {
+        // TODO: does firebase allow to set just a plain value to the main ref? If so, value will be
+        // a primitive value and list will have size 0, hower, value.getIn([]) won't return value in
+        // that case
         return value.getIn(requestedPath.slice(list.size))
       }
       if (list.equals(requestedPath)) {

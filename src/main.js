@@ -1,13 +1,15 @@
 //import {Map, List, fromJS} from 'immutable'
 import Firebase from 'firebase'
-import transactor from './naive_transactor'
+//import transactor from './naive_transactor'
+import {transactor} from './transactor'
 const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebase = new Firebase(firebaseUrl)
 
 
-const transactions = {
+const handlers = {
   pay: ({read, set, push}, data) => {
     let userFrom, userTo
+    //console.log('processing', data)
     return read(['user', data.userFrom])
     .then((_userFrom) => {
       userFrom = _userFrom
@@ -36,7 +38,7 @@ function getRandomTransaction(usersIds) {
   const userFrom = randomChoice(usersIds)
   const userTo = randomChoice(usersIds)
   const credit = Math.floor(Math.random() * 100)
-  return {userFrom, userTo, credit, type: 'pay'}
+  return {type: 'pay', data: {userFrom, userTo, credit}}
 }
 
 function demo() {
@@ -48,11 +50,11 @@ function demo() {
   }
 
   const transactionRef = firebase.child('transaction')
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < 10000; i++) {
     transactionRef.push(getRandomTransaction(usersIds))
   }
 
-  transactor(firebase, transactions)
+  transactor(firebase, handlers)
 
 }
 
