@@ -5,19 +5,10 @@ export class Registry {
   constructor() {
     this.lastId = 0
     // tracks transaction being run (not yet aborted or commited)
-    this.inProgress = Set()
     this.readsByTrx = Map() // {id: [path1, path2, ..]}
     this.writesByTrx = Map() // {id: [(path, value), (path2, value2),..}
     this.readsByPath = Map() // {key1: {readBy: set(id1, id2,..), keys: {key2: {readBy...}}}}
     this.writesByPath = Map()
-  }
-
-  open(id) {
-    this.inProgress = this.inProgress.add(id)
-  }
-
-  isInProgress(id) {
-    return this.inProgress.has(id)
   }
 
   _path(path) {
@@ -124,7 +115,6 @@ export class Registry {
         this.writesByTrx.get(id, []).map((x) => x.get('path')))
     this.readsByTrx = this.readsByTrx.delete(id)
     this.writesByTrx = this.writesByTrx.delete(id)
-    this.inProgress = this.inProgress.delete(id)
   }
 
   addRead(id, path) {

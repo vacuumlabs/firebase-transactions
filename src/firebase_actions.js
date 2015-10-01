@@ -26,15 +26,15 @@ export function promisify(callback: Function) {
 }
 
 export function getAuth(ref) {return fromJS(ref.getAuth()) }
-// Store callback for off
-//export function onAuth(ref, callback) {return onAuth(ref, (authData) => callback(fromJS(authData)) }
-// export function offAuth
-//
+
 function _change(ref, method, value) {
   return promisify((c) => ref[method](toJS(value), c))
 }
+
 export function set(ref, value) {return _change(ref, 'set', value) }
+
 export function update(ref, value) {return _change(ref, 'update', value) }
+
 export function remove(ref) {return promisify((c) => ref.remove(c)) }
 
 export function push(ref, value, onComplete) {return ref.push(toJS(value), onComplete) }
@@ -64,9 +64,6 @@ export function transact(transactionId, ref, updateFunction) {
   })
 }
 
-// export function on
-// export function off
-//
 export function createUser(ref, credentials) {
   return promisify((c) => ref.createUser(toJS(credentials), c))
 }

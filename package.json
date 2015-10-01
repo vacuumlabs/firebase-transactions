@@ -14,12 +14,11 @@
     "babel-eslint": "^3.0.1",
     "babel-loader": "^5.0.0",
     "babel-plugin-extensible-destructuring": "^1.0.2",
-    "bluebird": "^2.10.0",
+    "bluebird": "^2.10.1",
     "chai": "^3.3.0",
     "firebase": "^2.2.9",
     "heap": "^0.2.6",
     "mocha": "^2.3.3"
   },
-  "devDependencies": {
-  }
+  "devDependencies": {}
 }

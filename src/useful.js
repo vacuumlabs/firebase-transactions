@@ -84,6 +84,11 @@ export function flatmap(iterable, fn) {
   return res
 }
 
+export function repeat(num, fn) {
+  for (let i = 0; i < num; i++) {
+    fn(i)
+  }
+}
 
 (() => {
   assert.equal(isIterable([1, 2, 3]), true)
