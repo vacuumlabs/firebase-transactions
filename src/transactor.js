@@ -120,41 +120,37 @@ export function transactor(firebase, handlers) {
         console.log(`FINISH: tr no ${id}`)
         let writes = registry.writesByTrx.get(id)
         let writesRef = firebase.child('__internal/writes').child(id)
-        fba.set(writesRef, writes)
 
         // @marcelka: mame dve alternativy ako urobit 'apply' fazu
 
-        // @marcelka: toto je asynchronna alternativa: just fire all and wait
-        // till firebase do good
-        logTrSummary(id, 'process')
-        delete inProcess[id]
-        writes.forEach((write) => {
-          // TODO immutable destructuring
-          fba.set(refFromPath(write.get('path')), write.get('value'))
-        })
-        fba.remove(writesRef)
-        fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
-        fba.remove(firebase.child('transaction').child(trData.frbId))
-        //console.log('writes', writes)
-        registry.cleanup(id)
+        //// @marcelka: toto je asynchronna alternativa: just fire all and wait
+        //// till firebase do good
+        //logTrSummary(id, 'process')
+        //delete inProcess[id]
+        //fba.set(writesRef, writes)
+        //writes.forEach((write) => {
+        //  // TODO immutable destructuring
+        //  fba.set(refFromPath(write.get('path')), write.get('value'))
+        //})
+        //fba.remove(writesRef)
+        //fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
+        //fba.remove(firebase.child('transaction').child(trData.frbId))
+        //registry.cleanup(id)
 
 
         // @marcelka: toto je synchronna alternativa: pekne na vsetko pockaj
-        //logTrSummary(id, 'process')
-        //delete inProcess[id]
-        //return Promise.all(Array.from(writes.map((write) =>
-        //  fba.set(refFromPath(write.get('path')), write.get('value'))
-        //)))
-        //.then((_) => {
-        //  fba.remove(writesRef)
-        //  fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
-        //  fba.remove(firebase.child('transaction').child(trData.frbId))
-        //})
-        //// @marcelka pokusny delay
-        //.then(() => Promise.delay(10))
-        //.then(() => {
-        //  registry.cleanup(id)
-        //})
+        logTrSummary(id, 'process')
+        delete inProcess[id]
+        fba.set(writesRef, writes)
+        .then(() => Promise.all(Array.from(writes.map((write) =>
+          fba.set(refFromPath(write.get('path')), write.get('value'))
+        ))))
+        .then((_) => {
+          fba.remove(writesRef)
+          fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
+          fba.remove(firebase.child('transaction').child(trData.frbId))
+          registry.cleanup(id)
+        })
 
       })
       .catch((err) => {
