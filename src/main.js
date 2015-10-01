@@ -2,18 +2,18 @@
 import Firebase from 'firebase'
 //import transactor from './naive_transactor'
 import * as u from './useful'
-import {transactor} from './transactor'
+import {transactor, trSummary} from './transactor'
 import {Promise} from 'bluebird'
 import {read} from './firebase_actions'
 const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebase = new Firebase(firebaseUrl)
 
-const trCount = 100
+const trCount = 30
 const baseCredit = 1000000
-const userCount = 10
+const userCount = 4
 
 function randomDelay(val) {
-  return Promise.delay(Math.round(Math.random() * 100))
+  return Promise.delay(Math.round(Math.random() * 10))
   //return Promise.delay(0)
     .then(() => val)
 }
@@ -105,6 +105,7 @@ function demo() {
   .then((users) => {
     let sumCredit = u.sum(u.toArr(users).map(([_, user]) => user.credit))
     let sumTrCount = u.sum(u.toArr(users).map(([_, user]) => user.trCount)) / 2.0
+    //console.log('trSummary', trSummary)
     console.log('sumCredit', sumCredit, userCount * baseCredit)
     console.log('sumTrCount', sumTrCount, trCount)
   })

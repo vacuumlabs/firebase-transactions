@@ -1,6 +1,6 @@
 import {Promise} from 'bluebird'
 import {Registry} from './registry'
-//import * as useful from './useful'
+import * as u from './useful'
 import * as fba from './firebase_actions'
 
 // when aborted transaction should be rescheduled; in milliseconds
@@ -12,7 +12,16 @@ class AbortError {
   }
 }
 
+export const trSummary = {}
+
 export function transactor(firebase, handlers) {
+
+  function logTrSummary(id, op) {
+    if (trSummary[id] == null) {
+      trSummary[id] = {'try': 0, 'abort': 0, 'process': 0}
+    }
+    trSummary[id][op]++
+  }
 
   const registry = new Registry()
 
@@ -39,6 +48,8 @@ export function transactor(firebase, handlers) {
     if (inProcess[id] == null) {
       throw new Error('shouldnt abort transaction that is already aborted')
     }
+
+    logTrSummary(id, 'abort')
     registry.cleanup(id)
     // if tansaction is aborted, re-schedule it after some delay
     //console.log('rescheduling', waitingIndex[id])
@@ -66,7 +77,8 @@ export function transactor(firebase, handlers) {
       checkAbort()
       conflict = conflict.delete(id)
       if (!conflict.isEmpty()) {
-        if (conflict.min() < id) {
+        if (!u.all(conflict, (i) => (inProcess[i] != null)) ||
+            conflict.min() < id) {
           console.log(`aborting ${id}, because of ${conflict}`)
           abort(id)
         } else {
@@ -79,6 +91,7 @@ export function transactor(firebase, handlers) {
 
     // TODO if possible, make DB operations accept also firebase ref
     function read(path) {
+      handlePossibleConflict(registry.conflictingWithRead(path))
       return Promise.resolve()
         .then(() => fba.read(refFromPath(path)))
         .then((val) => {
@@ -99,6 +112,7 @@ export function transactor(firebase, handlers) {
     return Promise.resolve()
       .then(() => {
         //console.log(`starting handler ${id}`)
+        logTrSummary(id, 'try')
         return handler({set, read}, data)
       })
       .then(() => {
@@ -108,20 +122,26 @@ export function transactor(firebase, handlers) {
         let writesRef = firebase.child('__internal/writes').child(id)
         fba.set(writesRef, writes)
 
-        // @marcelka: toto bol originalny snipet kodu, nahradil som ho viac synchronnym
-        // kvoli experimentovaniu
+        // @marcelka: mame dve alternativy ako urobit 'apply' fazu
 
-        //writes.forEach((write) => {
-        //  // TODO immutable destructuring
-        //  fba.set(refFromPath(write.get('path')), write.get('value'))
-        //})
-        //fba.remove(writesRef)
-        //fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
-        //fba.remove(firebase.child('transaction').child(trData.frbId))
-        ////console.log('writes', writes)
-        //registry.cleanup(id)
-        //delete inProcess[id]
+        // @marcelka: toto je asynchronna alternativa: just fire all and wait
+        // till firebase do good
+        logTrSummary(id, 'process')
+        delete inProcess[id]
+        writes.forEach((write) => {
+          // TODO immutable destructuring
+          fba.set(refFromPath(write.get('path')), write.get('value'))
+        })
+        fba.remove(writesRef)
+        fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
+        fba.remove(firebase.child('transaction').child(trData.frbId))
+        //console.log('writes', writes)
+        registry.cleanup(id)
 
+
+        // @marcelka: toto je synchronna alternativa: pekne na vsetko pockaj
+        logTrSummary(id, 'process')
+        delete inProcess[id]
         return Promise.all(Array.from(writes.map((write) =>
           fba.set(refFromPath(write.get('path')), write.get('value'))
         )))
@@ -131,11 +151,11 @@ export function transactor(firebase, handlers) {
           fba.remove(firebase.child('transaction').child(trData.frbId))
         })
         // @marcelka pokusny delay
-        .then(() => Promise.delay(1000))
+        .then(() => Promise.delay(10))
         .then(() => {
           registry.cleanup(id)
-          delete inProcess[id]
         })
+
       })
       .catch((err) => {
         if (err instanceof AbortError) {
