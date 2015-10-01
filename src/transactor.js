@@ -140,21 +140,21 @@ export function transactor(firebase, handlers) {
 
 
         // @marcelka: toto je synchronna alternativa: pekne na vsetko pockaj
-        logTrSummary(id, 'process')
-        delete inProcess[id]
-        return Promise.all(Array.from(writes.map((write) =>
-          fba.set(refFromPath(write.get('path')), write.get('value'))
-        )))
-        .then((_) => {
-          fba.remove(writesRef)
-          fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
-          fba.remove(firebase.child('transaction').child(trData.frbId))
-        })
-        // @marcelka pokusny delay
-        .then(() => Promise.delay(10))
-        .then(() => {
-          registry.cleanup(id)
-        })
+        //logTrSummary(id, 'process')
+        //delete inProcess[id]
+        //return Promise.all(Array.from(writes.map((write) =>
+        //  fba.set(refFromPath(write.get('path')), write.get('value'))
+        //)))
+        //.then((_) => {
+        //  fba.remove(writesRef)
+        //  fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
+        //  fba.remove(firebase.child('transaction').child(trData.frbId))
+        //})
+        //// @marcelka pokusny delay
+        //.then(() => Promise.delay(10))
+        //.then(() => {
+        //  registry.cleanup(id)
+        //})
 
       })
       .catch((err) => {

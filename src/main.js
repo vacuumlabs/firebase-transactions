@@ -8,9 +8,9 @@ import {read} from './firebase_actions'
 const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebase = new Firebase(firebaseUrl)
 
-const trCount = 30
+const trCount = 1000
 const baseCredit = 1000000
-const userCount = 4
+const userCount = 100
 
 function randomDelay(val) {
   return Promise.delay(Math.round(Math.random() * 10))
@@ -105,7 +105,7 @@ function demo() {
   .then((users) => {
     let sumCredit = u.sum(u.toArr(users).map(([_, user]) => user.credit))
     let sumTrCount = u.sum(u.toArr(users).map(([_, user]) => user.trCount)) / 2.0
-    //console.log('trSummary', trSummary)
+    console.log('trSummary', trSummary)
     console.log('sumCredit', sumCredit, userCount * baseCredit)
     console.log('sumTrCount', sumTrCount, trCount)
   })
