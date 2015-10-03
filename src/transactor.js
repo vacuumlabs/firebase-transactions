@@ -214,7 +214,7 @@ export function transactor(firebase, handlers) {
   })
 
   return {
-    'stop': () => transactionRef.off(onChildAdded),
+    'stop': () => transactionRef.off('child_added', onChildAdded),
     'registry': registry
   }
 

@@ -14,7 +14,7 @@ log4js.configure({
 })
 
 const logger = log4js.getLogger('transactor')
-logger.setLevel('DEBUG')
+logger.setLevel('WARN')
 // use this setting to indicate that logging was already set and
 // individual components shouldn't use their defaults
 log4js.configured = true
@@ -32,18 +32,23 @@ describe('randomized', function() {
 
   this.timeout(60 * 60 * 1000)
 
-  it('basics', () => {
-    const settings = {trCount: 100, baseCredit: 1000, userCount: 100, maxWait: 100}
+  const settingses = []
 
-    return repeatAsync(100, () =>
-      test(settings)
+  for (let userCount of [10, 20, 50, 100]) {
+    for (let maxWait of [10, 20, 50, 100]) {
+      for (let trCount of [50, 100]) {
+        settingses.push({userCount, maxWait, trCount, baseCredit: 1000})
+      }
+    }
+  }
+
+  for (let settings of settingses) {
+    it(`running ${JSON.stringify(settings)}`, () => {
+      return test(settings)
         .then(({sumCredit, sumTrCount, trSummary}) => {
-          //console.log('trSummary', trSummary)
-          console.log('sumCredit', sumCredit)
-          console.log('sumTrCount', sumTrCount / 2)
           expect(sumCredit).to.equal(settings.baseCredit * settings.userCount)
           expect(sumTrCount).to.equal(2 * settings.trCount)
         })
-    )
-  })
+    })
+  }
 })
