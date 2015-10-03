@@ -19,25 +19,18 @@ logger.setLevel('WARN')
 // individual components shouldn't use their defaults
 log4js.configured = true
 
-function repeatAsync(n, f) {
-  let res = Promise.resolve()
-  u.repeat(n, (i) => {
-    res = res.then((_) => f(i))
-  })
-  return res
-}
-
-
 describe('randomized', function() {
 
   this.timeout(60 * 60 * 1000)
 
   const settingses = []
+  //const handlers = ['pay', 'payDeep']
+  const handlers = ['payValidated', 'payDeepValidated']
 
   for (let userCount of [10, 20, 50, 100]) {
     for (let maxWait of [10, 20, 50, 100]) {
       for (let trCount of [50, 100]) {
-        settingses.push({userCount, maxWait, trCount, baseCredit: 1000})
+        settingses.push({userCount, maxWait, trCount, baseCredit: 100, handlerNames: handlers})
       }
     }
   }
@@ -47,7 +40,7 @@ describe('randomized', function() {
       return test(settings)
         .then(({sumCredit, sumTrCount, trSummary}) => {
           expect(sumCredit).to.equal(settings.baseCredit * settings.userCount)
-          expect(sumTrCount).to.equal(2 * settings.trCount)
+          //expect(sumTrCount).to.equal(2 * settings.trCount)
         })
     })
   }

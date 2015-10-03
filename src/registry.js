@@ -159,10 +159,12 @@ export class Registry {
       let value = fromJS(write.get('value'))
       let list = this._prefix(path, requestedPath)
       if (list.equals(path)) {
-        // TODO: does firebase allow to set just a plain value to the main ref? If so, value will be
-        // a primitive value and list will have size 0, hower, value.getIn([]) won't return value in
-        // that case
-        return value.getIn(requestedPath.slice(list.size))
+        // TODO think about this
+        if (requestedPath.size === list.size) {
+          return value
+        } else {
+          return value.getIn(requestedPath.slice(list.size))
+        }
       }
       if (list.equals(requestedPath)) {
         return currVal.setIn(path.slice(list.size), value)

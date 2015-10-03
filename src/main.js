@@ -6,7 +6,7 @@ import {set, push, read} from './firebase_actions'
 import {is} from 'immutable'
 //import {test} from './test/randomized_basics'
 
-const firebaseUrl = 'https://4gu.firebaseio.com'
+const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebase = new Firebase(firebaseUrl)
 
 let registry
@@ -18,7 +18,7 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
   }
 
   const handlers = {
-    pay: ({read, set, push}, data) => {
+    pay: ({read, set, abort}, data) => {
       let wait = Math.round(Math.random() * maxWait)
       let userFrom, userTo
       return read(['user', data.userFrom])
@@ -40,6 +40,13 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
           credit: userTo.credit + data.credit,
           trCount: userTo.trCount + 1,
         }))
+      .then(() => read(['user', data.userFrom, 'credit']))
+      .then((credit) => {
+        if (credit < 0) {
+          console.log('USER ABORT!!!!!!!!!!!!!!!!!!!!!!!!')
+          abort('not enough funds')
+        }
+      })
       .then(() => {
         let c1 = registry.conflictingWithWrite(['user', data.userFrom])
         let c2 = registry.conflictingWithRead(['user', data.userFrom])
@@ -87,8 +94,8 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
       }
     }
 
-    //const credit = Math.floor(Math.random() * 100)
-    const credit = 10
+    const credit = Math.floor(Math.random() * 100)
+    //const credit = 10
     return {type: 'pay', data: {userFrom, userTo, credit}}
   }
 
@@ -142,7 +149,7 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
 }
 
 //const settings = {trCount: 1000, baseCredit: 1000, userCount: 100, maxWait: 100}
-const settings = {trCount: 100, baseCredit: 1000, userCount: 100, maxWait: 300}
+const settings = {trCount: 100, baseCredit: 100, userCount: 100, maxWait: 300}
 test2(settings)
 //test(settings)
 //  .then(({sumCredit, sumTrCount}) => {

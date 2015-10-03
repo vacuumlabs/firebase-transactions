@@ -7,55 +7,73 @@ import {read, set, push} from '../firebase_actions'
 const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebase = new Firebase(firebaseUrl)
 
-export function test({trCount, baseCredit, userCount, maxWait}) {
+export function test({trCount, baseCredit, userCount, maxWait, handlerNames}) {
 
   function randomDelay(maxWait) {
     return (val) => Promise.delay(Math.round(Math.random() * maxWait))
   }
 
-  const handlers = {
+  const payDeep = ({read, set, push}, data) => {
+    let wait = Math.round(Math.random() * maxWait)
+    let userFrom, userTo
+    return read(['user', data.userFrom])
+    .then((_userFrom) => userFrom = _userFrom)
+    .then(randomDelay(wait))
+    .then(() => read(['user', data.userTo]))
+    .then((_userTo) => userTo = _userTo)
+    .then(randomDelay(wait))
+    .then(() => set(['user', data.userFrom, 'credit'], userFrom.credit - data.credit))
+    .then(randomDelay(wait))
+    .then(() => set(['user', data.userFrom, 'trCount'], userFrom.trCount + 1))
+    .then(randomDelay(wait))
+    .then(() => set(['user', data.userTo, 'credit'], userTo.credit + data.credit))
+    .then(randomDelay(wait))
+    .then(() => set(['user', data.userTo, 'trCount'], userTo.trCount + 1))
+  }
 
-    payDeep: ({read, set, push}, data) => {
-      let wait = Math.round(Math.random() * maxWait)
-      let userFrom, userTo
-      return read(['user', data.userFrom])
-      .then((_userFrom) => userFrom = _userFrom)
-      .then(randomDelay(wait))
-      .then(() => read(['user', data.userTo]))
-      .then((_userTo) => userTo = _userTo)
-      .then(randomDelay(wait))
-      .then(() => set(['user', data.userFrom, 'credit'], userFrom.credit - data.credit))
-      .then(randomDelay(wait))
-      .then(() => set(['user', data.userFrom, 'trCount'], userFrom.trCount + 1))
-      .then(randomDelay(wait))
-      .then(() => set(['user', data.userTo, 'credit'], userTo.credit + data.credit))
-      .then(randomDelay(wait))
-      .then(() => set(['user', data.userTo, 'trCount'], userTo.trCount + 1))
-    },
+  const pay = ({read, set, push}, data) => {
+    let wait = Math.round(Math.random() * maxWait)
+    let userFrom, userTo
+    return read(['user', data.userFrom])
+    .then((_userFrom) => userFrom = _userFrom)
+    .then(randomDelay(wait))
+    .then(() => read(['user', data.userTo]))
+    .then((_userTo) => userTo = _userTo)
+    .then(randomDelay(wait))
+    .then(() => set(['user', data.userFrom],
+      {
+        ... userFrom,
+        credit: userFrom.credit - data.credit,
+        trCount: userFrom.trCount + 1,
+      }))
+    .then(randomDelay(wait))
+    .then(() => set(['user', data.userTo],
+      {
+        ... userTo,
+        credit: userTo.credit + data.credit,
+        trCount: userTo.trCount + 1,
+      }))
+  }
 
-    pay: ({read, set, push}, data) => {
-      let wait = Math.round(Math.random() * maxWait)
-      let userFrom, userTo
-      return read(['user', data.userFrom])
-      .then((_userFrom) => userFrom = _userFrom)
-      .then(randomDelay(wait))
-      .then(() => read(['user', data.userTo]))
-      .then((_userTo) => userTo = _userTo)
-      .then(randomDelay(wait))
-      .then(() => set(['user', data.userFrom],
-        {
-          ... userFrom,
-          credit: userFrom.credit - data.credit,
-          trCount: userFrom.trCount + 1,
-        }))
-      .then(randomDelay(wait))
-      .then(() => set(['user', data.userTo],
-        {
-          ... userTo,
-          credit: userTo.credit + data.credit,
-          trCount: userTo.trCount + 1,
-        }))
+
+  function makeValidated(payHandler) {
+    return (fns, data) => {
+      //console.log('data', data)
+      return payHandler(fns, data)
+        .then(() => fns.read(['user', data.userFrom, 'credit']))
+        .then((credit) => {
+          if (credit < 0) {
+            fns.abort('not enough funds')
+          }
+        })
     }
+  }
+
+  const handlers = {
+    pay,
+    payDeep,
+    payValidated: makeValidated(pay),
+    payDeepValidated: makeValidated(payDeep),
   }
 
   function randomChoice(arr) {
@@ -81,7 +99,7 @@ export function test({trCount, baseCredit, userCount, maxWait}) {
     }
 
     const credit = Math.floor(Math.random() * 100)
-    return {type: u.randomChoice(['pay', 'payDeep']), data: {userFrom, userTo, credit}}
+    return {type: u.randomChoice(handlerNames), data: {userFrom, userTo, credit}}
   }
 
   function run() {
