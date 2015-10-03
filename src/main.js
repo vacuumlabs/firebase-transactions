@@ -1,6 +1,6 @@
 import Firebase from 'firebase'
 import * as u from './useful'
-import {transactor, trSummary, registry} from './transactor'
+import {transactor} from './transactor'
 import {Promise} from 'bluebird'
 import {set, push, read} from './firebase_actions'
 import {is} from 'immutable'
@@ -8,6 +8,8 @@ import {is} from 'immutable'
 
 const firebaseUrl = 'https://4gu.firebaseio.com'
 const firebase = new Firebase(firebaseUrl)
+
+let registry
 
 function test2({trCount, baseCredit, userCount, maxWait}) {
 
@@ -43,8 +45,8 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
         let c2 = registry.conflictingWithRead(['user', data.userFrom])
         let c3 = registry.conflictingWithWrite(['user', data.userTo])
         let c4 = registry.conflictingWithRead(['user', data.userTo])
-        console.log('mumu', c1, c2, c3, c4)
         if (!(is(c1, c2) && is(c1, c3) && is(c1, c4))) {
+          console.log(c1, c2, c3, c4)
           console.log('from, to', data.userFrom, data.userTo)
           //console.log('transaction id:', data.id)
           console.log('####################################################################################################')
@@ -112,7 +114,9 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
     return Promise.all(toWait).then((_) => {
       let processedCount = 0
       // start transactor; process all submitted transactions
-      transactor(firebase, handlers)
+      let handler = transactor(firebase, handlers)
+      registry = handler.registry
+
       // completes, when we have ${trCount} closed transactions
       return new Promise((resolve, reject) => {
         firebase.child('closed_transactions').on('child_added', () => {
@@ -128,7 +132,6 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
     .then((users) => {
       let sumCredit = u.sum(u.toArr(users).map(([_, user]) => user.credit))
       let sumTrCount = u.sum(u.toArr(users).map(([_, user]) => user.trCount)) / 2.0
-      console.log('trSummary', trSummary)
       console.log('sumCredit', sumCredit, userCount * baseCredit)
       console.log('sumTrCount', sumTrCount, trCount)
       return {sumCredit, sumTrCount}
@@ -142,7 +145,7 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
 const settings = {trCount: 100, baseCredit: 1000, userCount: 100, maxWait: 300}
 test2(settings)
 //test(settings)
-//  .then(({sumCredit, sumTrCount, trSummary}) => {
+//  .then(({sumCredit, sumTrCount}) => {
 //     console.log('sumCredit', sumCredit)
 //     console.log('sumTrCount', sumTrCount / 2)
 //   })

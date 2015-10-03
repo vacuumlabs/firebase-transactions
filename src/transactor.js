@@ -31,16 +31,17 @@ class AbortError {
   }
 }
 
-export const trSummary = {}
-export const registry = new Registry()
 
 export function transactor(firebase, handlers) {
 
   if (!log4js.configured) configureLogging()
 
   const inProcess = {}
+  const finishing = {}
   const trCountLimit = 30
   const waiting = []
+  const trSummary = {}
+  const registry = new Registry()
   let nextTrId = 0
   let nextRunId = 0
   let trCount = 0
@@ -83,7 +84,6 @@ export function transactor(firebase, handlers) {
     registry.cleanup(id)
     delete inProcess[id]
     logger.debug(`CLEANUP & ABORT : tr no ${id}`)
-    console.log(`CLEANUP & ABORT : tr no ${id}`)
     // if tansaction is aborted, re-schedule it after some delay
     setTimeout(() => {pushWaiting(trData)}, rescheduleDelay)
   }
@@ -112,9 +112,9 @@ export function transactor(firebase, handlers) {
       checkAbort()
       let conflict = _conflict.delete(id)
       if (!conflict.isEmpty()) {
-        if (u.any(conflict, (i) => (inProcess[i] == null)) ||
+        if (u.any(conflict, (i) => finishing[i]) ||
             conflict.minBy((i) => inProcess[i].trId) === id) {
-          logger.debug(`aborting ${id}, because of ${conflict}, finishing: ${conflict.filter((c) => inProcess[c] == null)}`)
+          logger.debug(`aborting ${id}, because of ${conflict}, finishing: ${conflict.filter((i) => finishing[i])}`)
           abort(id)
         } else {
           logger.debug(`aborting ${conflict}, because of ${id}`)
@@ -127,14 +127,13 @@ export function transactor(firebase, handlers) {
     // TODO if possible, make DB operations accept also firebase ref
     function read(path) {
       handlePossibleConflict(registry.conflictingWithRead(path))
-      console.log(`ADDING READ trid: ${id} path: ${path}`)
       registry.addRead(id, path)
       return Promise.resolve()
         .then(() => fba.read(refFromPath(path)))
-        // XXX
-        //.then((val) => {
-        //  return registry.readAsIfTrx(id, path, val)
-        //})
+        .then((val) => {
+          checkAbort()
+          return registry.readAsIfTrx(id, path, val)
+        })
     }
 
     function set(path, value) {
@@ -163,7 +162,7 @@ export function transactor(firebase, handlers) {
         // at the bottom of this file; currently this cannot be currently used, see
         // coment there.
         logTrSummary(id, 'process')
-        delete inProcess[id]
+        finishing[id] = true
         let toWait = []
         toWait.push(fba.set(writesRef, writes))
         writes.forEach((write) => {
@@ -174,8 +173,9 @@ export function transactor(firebase, handlers) {
           fba.remove(writesRef)
           fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
           fba.remove(firebase.child('transaction').child(trData.frbId))
-          console.log(`FINISHING CLEANUP ${id}`)
           registry.cleanup(id)
+          delete inProcess[id]
+          delete finishing[id]
         })
 
       })
@@ -200,7 +200,8 @@ export function transactor(firebase, handlers) {
     }
   }
 
-  firebase.child('transaction').on('child_added', (childSnapshot, prevChildKey) => {
+  let transactionRef = firebase.child('transaction')
+  let onChildAdded = transactionRef.on('child_added', (childSnapshot, prevChildKey) => {
     let trData = childSnapshot.val()
     if (trData.type == null) {
       logger.error('malformed data: ', trData)
@@ -211,6 +212,11 @@ export function transactor(firebase, handlers) {
     trData.frbId = childSnapshot.key()
     pushWaiting(trData)
   })
+
+  return {
+    'stop': () => transactionRef.off(onChildAdded),
+    'registry': registry
+  }
 
 }
 
