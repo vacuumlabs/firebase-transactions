@@ -1,8 +1,9 @@
 import Firebase from 'firebase'
 import * as u from './useful'
-import {transactor, trSummary} from './transactor'
+import {transactor, trSummary, registry} from './transactor'
 import {Promise} from 'bluebird'
 import {set, push, read} from './firebase_actions'
+import {is} from 'immutable'
 //import {test} from './test/randomized_basics'
 
 const firebaseUrl = 'https://4gu.firebaseio.com'
@@ -37,6 +38,19 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
           credit: userTo.credit + data.credit,
           trCount: userTo.trCount + 1,
         }))
+      .then(() => {
+        let c1 = registry.conflictingWithWrite(['user', data.userFrom])
+        let c2 = registry.conflictingWithRead(['user', data.userFrom])
+        let c3 = registry.conflictingWithWrite(['user', data.userTo])
+        let c4 = registry.conflictingWithRead(['user', data.userTo])
+        console.log('mumu', c1, c2, c3, c4)
+        if (!(is(c1, c2) && is(c1, c3) && is(c1, c4))) {
+          console.log('from, to', data.userFrom, data.userTo)
+          //console.log('transaction id:', data.id)
+          console.log('####################################################################################################')
+
+        }
+      })
 
 
       //.then(() => set(['user', data.userFrom, 'credit'], userFrom.credit - data.credit))

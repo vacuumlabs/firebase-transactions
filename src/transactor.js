@@ -18,7 +18,7 @@ function configureLogging() {
         }
       }]
     })
-    logger.setLevel('DEBUG')
+    logger.setLevel('WARN')
   }
 }
 
@@ -32,30 +32,30 @@ class AbortError {
 }
 
 export const trSummary = {}
+export const registry = new Registry()
 
 export function transactor(firebase, handlers) {
 
   if (!log4js.configured) configureLogging()
 
-  function logTrSummary(id, op) {
-    if (trSummary[id] == null) {
-      trSummary[id] = {'try': 0, 'abort': 0, 'process': 0}
-    }
-    trSummary[id][op]++
-  }
+  const inProcess = {}
+  const trCountLimit = 30
+  const waiting = []
+  let nextTrId = 0
+  let nextRunId = 0
+  let trCount = 0
 
-  const registry = new Registry()
+  function logTrSummary(id, op) {
+    let trId = inProcess[id].id
+    if (trSummary[trId] == null) {
+      trSummary[trId] = {'try': 0, 'abort': 0, 'process': 0}
+    }
+    trSummary[trId][op]++
+  }
 
   function refFromPath(path) {
     return firebase.child(path.join('/'))
   }
-
-  let inProcess = {}
-  let nextId = 0
-  const trCountLimit = 30
-  let trCount = 0
-
-  const waiting = []
 
   function pushWaiting(val) {
     if (val == null) {
@@ -83,13 +83,15 @@ export function transactor(firebase, handlers) {
     registry.cleanup(id)
     delete inProcess[id]
     logger.debug(`CLEANUP & ABORT : tr no ${id}`)
+    console.log(`CLEANUP & ABORT : tr no ${id}`)
     // if tansaction is aborted, re-schedule it after some delay
     setTimeout(() => {pushWaiting(trData)}, rescheduleDelay)
   }
 
   function process(trData) {
     logger.debug(`starting process ${trData.id}`)
-    const {type, id, data} = trData
+    const {type, data} = trData
+    const id = nextRunId++
     const handler = handlers[type]
     if (handler == null) {
       throw new Error(`handler for type ${type} does not exist. Full trData: ${trData}`)
@@ -111,7 +113,7 @@ export function transactor(firebase, handlers) {
       let conflict = _conflict.delete(id)
       if (!conflict.isEmpty()) {
         if (u.any(conflict, (i) => (inProcess[i] == null)) ||
-            conflict.min() < id) {
+            conflict.minBy((i) => inProcess[i].trId) === id) {
           logger.debug(`aborting ${id}, because of ${conflict}, finishing: ${conflict.filter((c) => inProcess[c] == null)}`)
           abort(id)
         } else {
@@ -125,6 +127,7 @@ export function transactor(firebase, handlers) {
     // TODO if possible, make DB operations accept also firebase ref
     function read(path) {
       handlePossibleConflict(registry.conflictingWithRead(path))
+      console.log(`ADDING READ trid: ${id} path: ${path}`)
       registry.addRead(id, path)
       return Promise.resolve()
         .then(() => fba.read(refFromPath(path)))
@@ -142,6 +145,8 @@ export function transactor(firebase, handlers) {
     if (inProcess[id] != null) {
       throw new Error('processing transaction which is already inProcess')
     }
+
+    // RETURN
     inProcess[id] = trData
     return Promise.resolve()
       .then(() => {
@@ -169,6 +174,7 @@ export function transactor(firebase, handlers) {
           fba.remove(writesRef)
           fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
           fba.remove(firebase.child('transaction').child(trData.frbId))
+          console.log(`FINISHING CLEANUP ${id}`)
           registry.cleanup(id)
         })
 
@@ -200,8 +206,8 @@ export function transactor(firebase, handlers) {
       logger.error('malformed data: ', trData)
       throw new Error('malformed trData')
     }
-    logger.debug(`SCHEDULED: tr no ${nextId} data: ${JSON.stringify(trData)}`)
-    trData.id = nextId++
+    trData.trId = nextTrId++
+    logger.debug(`SCHEDULED: tr no ${trData.trId} data: ${JSON.stringify(trData)}`)
     trData.frbId = childSnapshot.key()
     pushWaiting(trData)
   })
