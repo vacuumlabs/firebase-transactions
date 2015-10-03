@@ -18,6 +18,8 @@
     "chai": "^3.3.0",
     "firebase": "^2.2.9",
     "heap": "^0.2.6",
+    "immutable": "^3.7.5",
+    "log4js": "^0.6.27",
     "mocha": "^2.3.3"
   },
   "devDependencies": {}

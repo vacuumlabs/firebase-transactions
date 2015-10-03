@@ -5,7 +5,8 @@ import {is, Map, Set} from 'immutable'
 
 describe('registry', () => {
 
-  let r, id1, id2
+  let r
+  const id1 = 1, id2 = 2
 
   function unorderedEquals(v1, v2) {
     v1 = Set(v1).toJS().sort()
@@ -15,8 +16,6 @@ describe('registry', () => {
 
   beforeEach(() => {
     r = new Registry()
-    id1 = r.open()
-    id2 = r.open()
   })
 
 

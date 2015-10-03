@@ -1,7 +1,26 @@
 import {Promise} from 'bluebird'
 import {Registry} from './registry'
+import {Set} from 'immutable'
 import * as u from './useful'
 import * as fba from './firebase_actions'
+import log4js from 'log4js'
+
+let logger = log4js.getLogger('transactor')
+
+function configureLogging() {
+  if (!log4js.configured) {
+    log4js.configure({
+      appenders: [{
+        type: 'console',
+        layout: {
+          type: 'pattern',
+          pattern: '[%[%5.5p%]] - %m'
+        }
+      }]
+    })
+    logger.setLevel('DEBUG')
+  }
+}
 
 // when aborted transaction should be rescheduled; in milliseconds
 const rescheduleDelay = 100
@@ -15,6 +34,8 @@ class AbortError {
 export const trSummary = {}
 
 export function transactor(firebase, handlers) {
+
+  if (!log4js.configured) configureLogging()
 
   function logTrSummary(id, op) {
     if (trSummary[id] == null) {
@@ -44,23 +65,30 @@ export function transactor(firebase, handlers) {
     tryConsumeWaiting()
   }
 
+  /*
+   * arg: transaction id
+   * input:
+   *   transaction must be 'inProcess'
+   * output:
+   *   transaction won't be 'inProcess'
+   *   all subsequent reads and writes of this transaction will throw AbortError
+   *   if the transaction doesn't do any read / writes and just finished, it'll throw
+   */
   function abort(id) {
     if (inProcess[id] == null) {
       throw new Error('shouldnt abort transaction that is already aborted')
     }
-
     logTrSummary(id, 'abort')
-    registry.cleanup(id)
-    // if tansaction is aborted, re-schedule it after some delay
-    //console.log('rescheduling', waitingIndex[id])
     let trData = inProcess[id]
-    setTimeout(() => {pushWaiting(trData)}, rescheduleDelay)
+    registry.cleanup(id)
     delete inProcess[id]
-    console.log(`ABORT: tr no ${id}`)
+    logger.debug(`CLEANUP & ABORT : tr no ${id}`)
+    // if tansaction is aborted, re-schedule it after some delay
+    setTimeout(() => {pushWaiting(trData)}, rescheduleDelay)
   }
 
   function process(trData) {
-    console.log(`starting process ${trData.id}`)
+    logger.debug(`starting process ${trData.id}`)
     const {type, id, data} = trData
     const handler = handlers[type]
     if (handler == null) {
@@ -68,21 +96,26 @@ export function transactor(firebase, handlers) {
     }
 
     function checkAbort() {
+      //logger.debug(`Checking abort id: ${id}, inProcess: ${inProcess[id]}`)
       if (inProcess[id] == null) {
+        logger.debug('checkAbort: throwing')
         throw new AbortError('Transaction was aborted')
       }
     }
 
-    function handlePossibleConflict(conflict) {
+    function handlePossibleConflict(_conflict) {
+      if (_conflict.constructor !== Set) {
+        throw new Error('conflict must be of a type immutable.Set')
+      }
       checkAbort()
-      conflict = conflict.delete(id)
+      let conflict = _conflict.delete(id)
       if (!conflict.isEmpty()) {
-        if (!u.all(conflict, (i) => (inProcess[i] != null)) ||
+        if (u.any(conflict, (i) => (inProcess[i] == null)) ||
             conflict.min() < id) {
-          console.log(`aborting ${id}, because of ${conflict}`)
+          logger.debug(`aborting ${id}, because of ${conflict}, finishing: ${conflict.filter((c) => inProcess[c] == null)}`)
           abort(id)
         } else {
-          console.log(`aborting ${conflict}, because of ${id}`)
+          logger.debug(`aborting ${conflict}, because of ${id}`)
           conflict.forEach(abort)
         }
       }
@@ -92,60 +125,47 @@ export function transactor(firebase, handlers) {
     // TODO if possible, make DB operations accept also firebase ref
     function read(path) {
       handlePossibleConflict(registry.conflictingWithRead(path))
+      registry.addRead(id, path)
       return Promise.resolve()
         .then(() => fba.read(refFromPath(path)))
-        .then((val) => {
-          handlePossibleConflict(registry.conflictingWithRead(path))
-          console.log('read', id, path, val)
-          registry.addRead(id, path)
-          return registry.readAsIfTrx(id, path, val)
-        })
+        // XXX
+        //.then((val) => {
+        //  return registry.readAsIfTrx(id, path, val)
+        //})
     }
 
     function set(path, value) {
       handlePossibleConflict(registry.conflictingWithWrite(path))
-      console.log('write', id, path, value)
       registry.addWrite(id, path, value)
     }
 
+    if (inProcess[id] != null) {
+      throw new Error('processing transaction which is already inProcess')
+    }
     inProcess[id] = trData
     return Promise.resolve()
       .then(() => {
-        //console.log(`starting handler ${id}`)
+        logger.debug(`starting handler ${id}`)
         logTrSummary(id, 'try')
         return handler({set, read}, data)
       })
       .then(() => {
         checkAbort()
-        console.log(`FINISH: tr no ${id}`)
+        logger.debug(`FINISH: tr no ${id}`)
         let writes = registry.writesByTrx.get(id)
         let writesRef = firebase.child('__internal/writes').child(id)
-
-        // @marcelka: mame dve alternativy ako urobit 'apply' fazu
-
-        //// @marcelka: toto je asynchronna alternativa: just fire all and wait
-        //// till firebase do good
-        //logTrSummary(id, 'process')
-        //delete inProcess[id]
-        //fba.set(writesRef, writes)
-        //writes.forEach((write) => {
-        //  // TODO immutable destructuring
-        //  fba.set(refFromPath(write.get('path')), write.get('value'))
-        //})
-        //fba.remove(writesRef)
-        //fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
-        //fba.remove(firebase.child('transaction').child(trData.frbId))
-        //registry.cleanup(id)
-
-
-        // @marcelka: toto je synchronna alternativa: pekne na vsetko pockaj
+        // synchronous variant of 'apply-transaction' code. Asynchronous variant is
+        // at the bottom of this file; currently this cannot be currently used, see
+        // coment there.
         logTrSummary(id, 'process')
         delete inProcess[id]
-        fba.set(writesRef, writes)
-        .then(() => Promise.all(Array.from(writes.map((write) =>
-          fba.set(refFromPath(write.get('path')), write.get('value'))
-        ))))
-        .then((_) => {
+        let toWait = []
+        toWait.push(fba.set(writesRef, writes))
+        writes.forEach((write) => {
+          // TODO immutable destructuring
+          toWait.push(fba.set(refFromPath(write.get('path')), write.get('value')))
+        })
+        Promise.all(toWait).then((_) => {
           fba.remove(writesRef)
           fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
           fba.remove(firebase.child('transaction').child(trData.frbId))
@@ -155,38 +175,51 @@ export function transactor(firebase, handlers) {
       })
       .catch((err) => {
         if (err instanceof AbortError) {
-          //console.log(`abort error ${id}`)
+          logger.debug(`abort error ${id}`)
           return
         }
         throw err
       })
-
   }
-
 
   function tryConsumeWaiting() {
     while (waiting.length > 0 && trCount < trCountLimit) {
       trCount += 1
       let trData = waiting.shift()
       process(trData)
-        .then(() => { //eslint-disable-line no-loop-func
+        .then(() => {
           trCount -= 1
           tryConsumeWaiting()
         })
-        //.catch((err) => console.log('tutututu', err, (err instanceof AbortError)))
     }
   }
 
   firebase.child('transaction').on('child_added', (childSnapshot, prevChildKey) => {
     let trData = childSnapshot.val()
     if (trData.type == null) {
-      console.log('malformed data: ', trData)
+      logger.error('malformed data: ', trData)
       throw new Error('malformed trData')
     }
-    console.log(`SCHEDULED: tr no ${nextId} data: ${JSON.stringify(trData)}`)
+    logger.debug(`SCHEDULED: tr no ${nextId} data: ${JSON.stringify(trData)}`)
     trData.id = nextId++
     trData.frbId = childSnapshot.key()
     pushWaiting(trData)
   })
 
 }
+
+// Asynchronous variant of 'transaction-apply' phase. Sadly, because bug in Firebase
+// (or maybe just lack of guarantees provided by Firebase? It's hard to say, the spec
+// is fuzzy), this leads to errors (transaction behavior is not guaranteed)
+//
+//logTrSummary(id, 'process')
+//delete inProcess[id]
+//fba.set(writesRef, writes)
+//writes.forEach((write) => {
+//  fba.set(refFromPath(write.get('path')), write.get('value'))
+//})
+//fba.remove(writesRef)
+//fba.set(firebase.child('closed_transactions').child(trData.frbId), trData)
+//fba.remove(firebase.child('transaction').child(trData.frbId))
+//registry.cleanup(id)
+

@@ -97,6 +97,8 @@ export class Registry {
 
   conflictingWithWrite(path) {
     return this._idsAlongPath(this.readsByPath, fromJS(path))
+      //.union(this.conflictingWithRead(path))
+
   }
 
   deletePaths(id, map, paths) {

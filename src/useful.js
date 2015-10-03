@@ -1,4 +1,4 @@
-import {fromJS} from 'immutable'
+import {fromJS, Iterable} from 'immutable'
 import {assert} from 'chai'
 
 export function jsify(obj) {
@@ -88,6 +88,23 @@ export function repeat(num, fn) {
   for (let i = 0; i < num; i++) {
     fn(i)
   }
+}
+
+export function randomChoice(list) {
+  if (Iterable.isIterable(list)) return list.get(Math.floor(Math.random() * list.count()))
+  else return list[Math.floor(Math.random() * list.length)]
+}
+
+export function getRandomValue() {
+  return Math.random().toString(36).substring(7)
+}
+
+export function repeatAsync(n, f) {
+  let res = Promise.resolve()
+  repeat(n, (i) => {
+    res = res.then((_) => f(i))
+  })
+  return res
 }
 
 (() => {
