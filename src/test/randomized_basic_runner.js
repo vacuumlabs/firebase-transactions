@@ -25,7 +25,7 @@ describe('randomized', function() {
 
   const settingses = []
   //const handlers = ['pay', 'payDeep']
-  const handlers = ['payValidated', 'payDeepValidated']
+  const handlers = ['pay', 'payDeep', 'payValidated', 'payDeepValidated']
 
   for (let userCount of [10, 20, 50, 100]) {
     for (let maxWait of [10, 20, 50, 100]) {
