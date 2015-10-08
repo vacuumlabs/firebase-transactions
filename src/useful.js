@@ -12,7 +12,7 @@ export function jsify(obj) {
 }
 
 export function isEmpty(obj) {
-  return Object.keys(obj).length > 0
+  return Object.keys(obj).length === 0
 }
 
 export function forEachKV(obj, fn) {

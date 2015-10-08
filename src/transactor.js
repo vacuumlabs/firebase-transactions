@@ -52,6 +52,12 @@ export function transactor(firebase, handlers) {
   let nextRunId = 0
   let trCount = 0
 
+  function _abort(id) {
+    registry.cleanup(id)
+    delete inProcess[id]
+  }
+
+
   function logTrSummary(id, op) {
     let trId = inProcess[id].id
     if (trSummary[trId] == null) {
@@ -81,16 +87,15 @@ export function transactor(firebase, handlers) {
    *   all subsequent reads and writes of this transaction will throw AbortError
    *   if the transaction doesn't do any read / writes and just finished, it'll throw
    */
-  // --abort
-  function abort(id) {
+  // --abortAndReschedule
+  function abortAndReschedule(id) {
     if (inProcess[id] == null) {
       throw new Error('shouldnt abort transaction that is already aborted')
     }
+    logger.debug(`CLEANUP & ABORT : tr no ${id}`)
     logTrSummary(id, 'abort')
     let trData = inProcess[id]
-    registry.cleanup(id)
-    delete inProcess[id]
-    logger.debug(`CLEANUP & ABORT : tr no ${id}`)
+    _abort(id)
     // if tansaction is aborted, re-schedule it after some delay
     setTimeout(() => {pushWaiting(trData)}, rescheduleDelay)
   }
@@ -114,7 +119,11 @@ export function transactor(firebase, handlers) {
       .then(() => {
         logger.debug(`starting handler ${id}`)
         logTrSummary(id, 'try')
-        return handler({set: userSet, read: userRead, abort: userAbort}, data)
+        return handler({
+          set: userSet,
+          read: userRead,
+          abort: userAbort
+        }, data)
       })
       .catch((err) => {
         if (err instanceof UserAbort) {
@@ -179,10 +188,10 @@ export function transactor(firebase, handlers) {
         if (u.any(conflict, (i) => finishing[i]) ||
             conflictTrIds.min() < trId) {
           logger.debug(`aborting ${trId}, because of ${conflictTrIds}, finishing: ${finishingTrIds}`)
-          abort(id)
+          abortAndReschedule(id)
         } else {
           logger.debug(`aborting ${conflictTrIds}, because of ${trId}, finishing: ${finishingTrIds}`)
-          conflict.forEach(abort)
+          conflict.forEach(abortAndReschedule)
         }
       }
       checkAbort()
