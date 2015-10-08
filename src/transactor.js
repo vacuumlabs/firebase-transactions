@@ -42,8 +42,7 @@ export function transactor(firebase, handlers) {
 
   if (!log4js.configured) configureLogging()
 
-  const inProcess = {}
-  const finishing = {}
+  const runs = {} // run id mapped to trData
   const trCountLimit = 30
   const waiting = []
   const trSummary = {}
@@ -54,12 +53,12 @@ export function transactor(firebase, handlers) {
 
   function _abort(id) {
     registry.cleanup(id)
-    delete inProcess[id]
+    delete runs[id]
   }
 
 
   function logTrSummary(id, op) {
-    let trId = inProcess[id].id
+    let trId = runs[id].id
     if (trSummary[trId] == null) {
       trSummary[trId] = {'try': 0, 'abort': 0, 'process': 0}
     }
@@ -78,6 +77,10 @@ export function transactor(firebase, handlers) {
     tryConsumeWaiting()
   }
 
+  function scheduleLater(trData) {
+    setTimeout(() => {pushWaiting(trData)}, rescheduleDelay)
+  }
+
   /*
    * arg: transaction id
    * input:
@@ -89,32 +92,29 @@ export function transactor(firebase, handlers) {
    */
   // --abortAndReschedule
   function abortAndReschedule(id) {
-    if (inProcess[id] == null) {
+    if (runs[id] == null) {
       throw new Error('shouldnt abort transaction that is already aborted')
     }
     logger.debug(`CLEANUP & ABORT : tr no ${id}`)
     logTrSummary(id, 'abort')
-    let trData = inProcess[id]
+    scheduleLater(runs[id])
     _abort(id)
-    // if tansaction is aborted, re-schedule it after some delay
-    setTimeout(() => {pushWaiting(trData)}, rescheduleDelay)
+    // if transaction is aborted, re-schedule it after some delay
   }
 
   // --processTr
-  function processTr(id, trData) {
-    logger.debug(`starting process ${trData.id}`)
-    const {type, data} = trData
+  function processTr(id) {
+    logger.debug(`starting process ${id}`)
+    const {type, data} = runs[id]
     const handler = handlers[type]
     if (handler == null) {
-      throw new Error(`handler for type ${type} does not exist. Full trData: ${trData}`)
+      throw new Error(`handler for type ${type} does not exist. Full trData: ${runs[id]}`)
     }
 
-    if (inProcess[id] != null) {
-      throw new Error('processing transaction which is already inProcess')
+    if (runs[id] == null) {
+      throw new Error('given run does not exist!')
     }
 
-    inProcess[id] = trData
-    let userAborted = false
     return Promise.resolve()
       .then(() => {
         logger.debug(`starting handler ${id}`)
@@ -128,36 +128,39 @@ export function transactor(firebase, handlers) {
       .catch((err) => {
         if (err instanceof UserAbort) {
           logger.debug(`user abort ${id}, msg: ${err.msg}`)
-          userAborted = true
           return
         }
         throw err
       })
       .then(() => {
-        checkAbort()
-        logger.debug(`FINISH: tr no ${id}`)
-        let writes = userAborted ? [] : registry.writesByTrx.get(id)
-        let writesRef = firebase.child('__internal/writes').child(id)
-        // synchronous variant of 'apply-transaction' code. Asynchronous variant is
-        // at the bottom of this file; currently this cannot be currently used, see
-        // coment there.
-        logTrSummary(id, 'process')
-        finishing[id] = true
-        let toWait = []
-        toWait.push(set(writesRef, writes))
-        writes.forEach((write) => {
-          // TODO immutable destructuring
-          toWait.push(set(refFromPath(write.get('path')), write.get('value')))
-        })
-        Promise.all(toWait).then((_) => {
-          remove(writesRef)
-          set(firebase.child('closed_transactions').child(trData.frbId), trData)
-          remove(firebase.child('transaction').child(trData.frbId))
-          registry.cleanup(id)
-          delete inProcess[id]
-          delete finishing[id]
-        })
-
+        // even if no Error is thrown, the transaction might be aborted in the
+        // very last moment. Better check for it (userabort is not relevant now, as
+        // we want to process such transaction)
+        if (runs[id] != null) {
+          logger.debug(`FINISH: tr no ${id}`)
+          let userAborted = runs[id].status === 'useraborted'
+          let writes = userAborted ? [] : registry.writesByTrx.get(id)
+          let writesRef = firebase.child('__internal/writes').child(id)
+          // synchronous variant of 'apply-transaction' code. Asynchronous variant is
+          // at the bottom of this file; currently this cannot be currently used, see
+          // coment there.
+          logTrSummary(id, 'process')
+          runs[id].status = 'finishing'
+          let toWait = []
+          toWait.push(set(writesRef, writes))
+          writes.forEach((write) => {
+            // TODO immutable destructuring
+            toWait.push(set(refFromPath(write.get('path')), write.get('value')))
+          })
+          Promise.all(toWait).then((_) => {
+            let trData = runs[id]
+            remove(writesRef)
+            set(firebase.child('closed_transactions').child(trData.frbId), trData)
+            remove(firebase.child('transaction').child(trData.frbId))
+            registry.cleanup(id)
+            delete runs[id]
+          })
+        }
       })
       .catch((err) => {
         if (err instanceof AbortError) {
@@ -169,10 +172,15 @@ export function transactor(firebase, handlers) {
 
     function checkAbort() {
       //logger.debug(`Checking abort id: ${id}, inProcess: ${inProcess[id]}`)
-      if (inProcess[id] == null) {
-        logger.debug('checkAbort: throwing')
+      if (runs[id] == null || runs[id].status === 'useraborted') {
+        logger.debug('checkAbort: throwing abort')
         throw new AbortError('Transaction was aborted')
       }
+      if (runs[id] === 'useraborted') {
+        logger.debug('checkAbort: throwing useraborted')
+        throw new AbortError('Transaction was aborted')
+      }
+
     }
 
     function handlePossibleConflict(_conflict) {
@@ -181,11 +189,11 @@ export function transactor(firebase, handlers) {
       }
       checkAbort()
       let conflict = _conflict.delete(id)
-      let conflictTrIds = conflict.map((i) => inProcess[i].trId)
-      let trId = inProcess[id].trId
-      let finishingTrIds = conflict.filter((i) => finishing[i]).map((i) => inProcess[i].trId)
+      let conflictTrIds = conflict.map((i) => runs[i].trId)
+      let trId = runs[id].trId
+      let finishingTrIds = conflict.filter((i) => runs[i].status === 'finishing').map((i) => runs[i].trId)
       if (!conflict.isEmpty()) {
-        if (u.any(conflict, (i) => finishing[i]) ||
+        if (u.any(conflict, (i) => runs[i].status === 'finishing') ||
             conflictTrIds.min() < trId) {
           logger.debug(`aborting ${trId}, because of ${conflictTrIds}, finishing: ${finishingTrIds}`)
           abortAndReschedule(id)
@@ -216,12 +224,10 @@ export function transactor(firebase, handlers) {
     }
 
     function userAbort(msg) {
-      trData.abortMsg = msg
+      runs[id].abortMsg = msg
+      runs[id].status = 'useraborted'
       throw new UserAbort(msg)
     }
-
-    //function update() {
-    //}
 
   }
 
@@ -229,7 +235,9 @@ export function transactor(firebase, handlers) {
     while (waiting.length > 0 && trCount < trCountLimit) {
       trCount += 1
       let trData = waiting.shift()
-      processTr(nextRunId++, trData)
+      let id = nextRunId++
+      runs[id] = {...trData, status: 'inprocess', id}
+      processTr(id)
         .then(() => {
           trCount -= 1
           tryConsumeWaiting()
