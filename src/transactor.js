@@ -56,7 +56,6 @@ export function transactor(firebase, handlers) {
     delete runs[id]
   }
 
-
   function logTrSummary(id, op) {
     let trId = runs[id].id
     if (trSummary[trId] == null) {
@@ -81,15 +80,6 @@ export function transactor(firebase, handlers) {
     setTimeout(() => {pushWaiting(trData)}, rescheduleDelay)
   }
 
-  /*
-   * arg: transaction id
-   * input:
-   *   transaction must be 'inProcess'
-   * output:
-   *   transaction won't be 'inProcess'
-   *   all subsequent reads and writes of this transaction will throw AbortError
-   *   if the transaction doesn't do any read / writes and just finished, it'll throw
-   */
   // --abortAndReschedule
   function abortAndReschedule(id) {
     if (runs[id] == null) {
@@ -99,7 +89,6 @@ export function transactor(firebase, handlers) {
     logTrSummary(id, 'abort')
     scheduleLater(runs[id])
     _abort(id)
-    // if transaction is aborted, re-schedule it after some delay
   }
 
   // --processTr
@@ -141,25 +130,19 @@ export function transactor(firebase, handlers) {
           let userAborted = runs[id].status === 'useraborted'
           let writes = userAborted ? [] : registry.writesByTrx.get(id)
           let writesRef = firebase.child('__internal/writes').child(id)
-          // synchronous variant of 'apply-transaction' code. Asynchronous variant is
-          // at the bottom of this file; currently this cannot be currently used, see
-          // coment there.
           logTrSummary(id, 'process')
           runs[id].status = 'finishing'
-          let toWait = []
-          toWait.push(set(writesRef, writes))
+          set(writesRef, writes)
           writes.forEach((write) => {
             // TODO immutable destructuring
-            toWait.push(set(refFromPath(write.get('path')), write.get('value')))
+            set(refFromPath(write.get('path')), write.get('value'))
           })
-          Promise.all(toWait).then((_) => {
-            let trData = runs[id]
-            remove(writesRef)
-            set(firebase.child('closed_transactions').child(trData.frbId), trData)
-            remove(firebase.child('transaction').child(trData.frbId))
-            registry.cleanup(id)
-            delete runs[id]
-          })
+          let trData = runs[id]
+          remove(writesRef)
+          set(firebase.child('closed_transactions').child(trData.frbId), trData)
+          remove(firebase.child('transaction').child(trData.frbId))
+          registry.cleanup(id)
+          delete runs[id]
         }
       })
       .catch((err) => {
@@ -265,18 +248,18 @@ export function transactor(firebase, handlers) {
 
 }
 
-// Asynchronous variant of 'transaction-apply' phase. Sadly, because bug in Firebase
-// (or maybe just lack of guarantees provided by Firebase? It's hard to say, the spec
-// is fuzzy), this leads to errors (transaction behavior is not guaranteed)
-//
-//logTrSummary(id, 'process')
-//delete inProcess[id]
-//set(writesRef, writes)
+// Synchronous variant of finishing transaction code
+//let toWait = []
+//toWait.push(set(writesRef, writes))
 //writes.forEach((write) => {
-//  set(refFromPath(write.get('path')), write.get('value'))
+//  // TODO immutable destructuring
+//  toWait.push(set(refFromPath(write.get('path')), write.get('value')))
 //})
-//remove(writesRef)
-//set(firebase.child('closed_transactions').child(trData.frbId), trData)
-//remove(firebase.child('transaction').child(trData.frbId))
-//registry.cleanup(id)
-
+//let trData = runs[id]
+//  Promise.all(toWait).then((_) => {
+//  remove(writesRef)
+//  set(firebase.child('closed_transactions').child(trData.frbId), trData)
+//  remove(firebase.child('transaction').child(trData.frbId))
+//  registry.cleanup(id)
+//  delete runs[id]
+//})
