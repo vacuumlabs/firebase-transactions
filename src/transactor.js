@@ -123,11 +123,11 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
       .catch((err) => {
         if (err instanceof UserAbort) {
           logger.debug(`user abort ${id}, msg: ${err.msg}`)
-          return
+          return {error: err.msg}
         }
         throw err
       })
-      .then(() => {
+      .then((result) => {
         // even if no Error is thrown, the transaction might be aborted in the
         // very last moment. Better check for it (userabort is not relevant now, as
         // we want to process such transaction)
@@ -145,7 +145,16 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
           })
           let trData = runs[id]
           remove(writesRef)
-          set(closedTrxRef.child(trData.frbId), trData)
+          try {
+            // TODO handle this better (some parts of result might get lost
+            // here, so warn user about it)
+            result = JSON.parse(JSON.stringify({result}))
+          } catch (e) {
+            console.log(`Error for transaction id=${id}, result cannot be saved\n
+                        to firebase (result=${result})`)
+            result = {}
+          }
+          set(closedTrxRef.child(trData.frbId), {data: trData, result})
           remove(todoTrxRef.child(trData.frbId))
           registry.cleanup(id)
           delete runs[id]
