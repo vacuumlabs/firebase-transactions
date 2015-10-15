@@ -1,13 +1,10 @@
-
 # Transactional Firebase
 
-## Installation
+[![Circle CI](https://circleci.com/gh/tomaskulich/firebase-transactions.svg?style=svg)](https://circleci.com/gh/tomaskulich/firebase-transactions)
 
-## Usage
-
-## Options
-
-## Examples
+Firebase with transaction? Real transactions with all the ACID goodness? Are you kidding me? Yup, a
+little. Some things are hard to achieve within firebase; however, there are quite strong guarantees
+you got when using this.
 
 ## License
 
