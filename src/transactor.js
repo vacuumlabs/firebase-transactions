@@ -38,7 +38,10 @@ class UserAbort {
 }
 
 
-export function transactor(firebase, handlers) {
+export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
+
+  todoTrxRef = todoTrxRef || firebase.child('transaction')
+  closedTrxRef = closedTrxRef || firebase.child('closed_transactions')
 
   if (!log4js.configured) configureLogging()
 
@@ -109,9 +112,12 @@ export function transactor(firebase, handlers) {
         logger.debug(`starting handler ${id}`)
         logTrSummary(id, 'try')
         return handler({
-          set: userSet,
+          abort: userAbort,
+          change: userChange,
+          getId: userGetId,
+          push: userPush,
           read: userRead,
-          abort: userAbort
+          set: userSet,
         }, data)
       })
       .catch((err) => {
@@ -139,8 +145,8 @@ export function transactor(firebase, handlers) {
           })
           let trData = runs[id]
           remove(writesRef)
-          set(firebase.child('closed_transactions').child(trData.frbId), trData)
-          remove(firebase.child('transaction').child(trData.frbId))
+          set(closedTrxRef.child(trData.frbId), trData)
+          remove(todoTrxRef.child(trData.frbId))
           registry.cleanup(id)
           delete runs[id]
         }
@@ -212,6 +218,21 @@ export function transactor(firebase, handlers) {
       throw new UserAbort(msg)
     }
 
+    function userPush(path, value) {
+      let ref = firebase.child(path).push()
+      userSet(ref.toString().split('/'), value)
+      return ref
+    }
+
+    function userGetId() {
+      return firebase.push().key()
+    }
+
+    function userChange(path, updateFn) {
+      return userRead(path)
+        .then((snapshot) => userSet(path, updateFn(snapshot)))
+    }
+
   }
 
   function tryConsumeWaiting() {
@@ -228,8 +249,7 @@ export function transactor(firebase, handlers) {
     }
   }
 
-  let transactionRef = firebase.child('transaction')
-  let onChildAdded = transactionRef.on('child_added', (childSnapshot, prevChildKey) => {
+  let onChildAdded = todoTrxRef.on('child_added', (childSnapshot, prevChildKey) => {
     let trData = childSnapshot.val()
     if (trData.type == null) {
       logger.error('malformed data: ', trData)
@@ -242,7 +262,7 @@ export function transactor(firebase, handlers) {
   })
 
   return {
-    'stop': () => transactionRef.off('child_added', onChildAdded),
+    'stop': () => todoTrxRef.off('child_added', onChildAdded),
     'registry': registry
   }
 
