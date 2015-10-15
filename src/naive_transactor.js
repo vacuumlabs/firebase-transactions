@@ -1,4 +1,6 @@
 import {read, set} from './firebase_actions'
+import {TODO_TRX_PATH} from './settings'
+
 export default function transactor(firebase, transactionConfig) {
 
   function trRead(path) {
@@ -21,7 +23,7 @@ export default function transactor(firebase, transactionConfig) {
     })
   }
 
-  firebase.child('transaction').on('value', (snapshot) => {
+  firebase.child(TODO_TRX_PATH).on('value', (snapshot) => {
     eventCount++
     if (eventCount === 1) startProcess()
   })
@@ -34,13 +36,13 @@ export default function transactor(firebase, transactionConfig) {
       return fn({read: trRead, set: trSet, push}, data)
         .then(() => {
           firebase.child('finished_transaction').child(id).set(data)
-          firebase.child('transaction').child(id).remove()
+          firebase.child(TODO_TRX_PATH).child(id).remove()
         })
     })
   }
 
   function firstTransaction() {
-    return read(firebase.child('transaction').orderByKey().limitToFirst(1))
+    return read(firebase.child(TODO_TRX_PATH).orderByKey().limitToFirst(1))
       .then((data) => {
         if (data == null) return null
         const id = Object.keys(data)[0]

@@ -4,6 +4,7 @@ import {transactor} from './transactor'
 import {Promise} from 'bluebird'
 import {set, push, read} from './firebase_actions'
 import {is} from 'immutable'
+import {TODO_TRX_PATH, DONE_TRX_PATH} from './settings'
 //import {test} from './test/randomized_basics'
 
 const firebaseUrl = 'https://gugugu.firebaseio.com'
@@ -113,7 +114,7 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
       toWait.push(set(userRef.child(i), user))
     })
 
-    const transactionRef = firebase.child('transaction')
+    const transactionRef = firebase.child(TODO_TRX_PATH)
     for (let i = 0; i < trCount; i++) {
       toWait.push(push(transactionRef, getRandomTransaction(usersIds)))
     }
@@ -126,7 +127,7 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
 
       // completes, when we have ${trCount} closed transactions
       return new Promise((resolve, reject) => {
-        firebase.child('closed_transactions').on('child_added', () => {
+        firebase.child(DONE_TRX_PATH).on('child_added', () => {
           processedCount += 1
           if (processedCount === trCount) {
             resolve()

@@ -4,6 +4,7 @@ import {Set} from 'immutable'
 import * as u from './useful'
 import {read, set, remove} from './firebase_actions'
 import log4js from 'log4js'
+import {TODO_TRX_PATH, DONE_TRX_PATH} from './settings'
 
 let logger = log4js.getLogger('transactor')
 
@@ -40,8 +41,8 @@ class UserAbort {
 
 export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
 
-  todoTrxRef = todoTrxRef || firebase.child('transaction')
-  closedTrxRef = closedTrxRef || firebase.child('closed_transactions')
+  todoTrxRef = todoTrxRef || firebase.child(TODO_TRX_PATH)
+  closedTrxRef = closedTrxRef || firebase.child(DONE_TRX_PATH)
 
   if (!log4js.configured) configureLogging()
 
@@ -150,11 +151,10 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
             // here, so warn user about it)
             result = JSON.parse(JSON.stringify({result}))
           } catch (e) {
-            console.log(`Error for transaction id=${id}, result cannot be saved\n
-                        to firebase (result=${result})`)
+            console.log(`Error for transaction id=${id}, result cannot be saved\n to firebase (result=${result})`)
             result = {}
           }
-          set(closedTrxRef.child(trData.frbId), {data: trData, result})
+          set(closedTrxRef.child(trData.frbId), {data: trData, ...result})
           remove(todoTrxRef.child(trData.frbId))
           registry.cleanup(id)
           delete runs[id]
@@ -287,8 +287,8 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
 //let trData = runs[id]
 //  Promise.all(toWait).then((_) => {
 //  remove(writesRef)
-//  set(firebase.child('closed_transactions').child(trData.frbId), trData)
-//  remove(firebase.child('transaction').child(trData.frbId))
+//  set(firebase.child(DONE_TRX_PATH).child(trData.frbId), trData)
+//  remove(firebase.child(TODO_TRX_PATH).child(trData.frbId))
 //  registry.cleanup(id)
 //  delete runs[id]
 //})
