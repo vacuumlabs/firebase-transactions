@@ -228,8 +228,8 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
     }
 
     function userPush(path, value) {
-      let ref = firebase.child(path).push()
-      userSet(ref.toString().split('/'), value)
+      let ref = refFromPath(path).push()
+      userSet([...path, ref.key()], value)
       return ref
     }
 
