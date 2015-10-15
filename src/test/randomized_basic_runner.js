@@ -29,7 +29,7 @@ describe('randomized', function() {
 
   for (let userCount of [10, 20, 50, 100]) {
     for (let maxWait of [10, 20, 50, 100]) {
-      for (let trCount of [50, 100]) {
+      for (let trCount of [10, 20]) {
         settingses.push({userCount, maxWait, trCount, baseCredit: 100, handlerNames: handlers})
       }
     }
