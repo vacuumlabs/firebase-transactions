@@ -172,6 +172,7 @@ export class Registry {
       return currVal
     }
 
+    console.log('tututu', this.writes(id), firebaseValue)
     let res = this.writes(id).reduce(apply, firebaseValue)
     if (typeof res === 'object') {
       res = res.toJS()
