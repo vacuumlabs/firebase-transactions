@@ -1,7 +1,7 @@
 import {expect} from 'chai'
 import log4js from 'log4js'
 import {test} from './randomized_basics'
-import * as u from '../useful'
+//import * as u from '../useful'
 
 log4js.configure({
   appenders: [{

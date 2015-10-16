@@ -1,7 +1,7 @@
 import {DONE_TRX_PATH} from './settings'
 
 export function readTransactionResult(firebase, trxId,
-  closedTrxPath = DONE_TRX_PATH) {
+closedTrxPath = DONE_TRX_PATH) {
   let fn
   let ref = firebase.child(closedTrxPath).child(trxId)
 
