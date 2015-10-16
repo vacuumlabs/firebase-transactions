@@ -1,6 +1,17 @@
 import gulp from 'gulp'
 import mocha from 'gulp-mocha'
 import runSequence from 'run-sequence'
+import eslint from 'gulp-eslint'
+
+gulp.task('eslint', () => {
+  return gulp.src([
+    'gulpfile.babel.js',
+    'src/**/*.js',
+  ])
+  .pipe(eslint())
+  .pipe(eslint.format())
+  .pipe(eslint.failAfterError())
+})
 
 gulp.task('end', () => {
   process.exit()

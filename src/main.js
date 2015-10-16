@@ -30,14 +30,14 @@ function test2({trCount, baseCredit, userCount, maxWait}) {
       .then(randomDelay(wait))
       .then(() => set(['user', data.userFrom],
         {
-          ... userFrom,
+          ...userFrom,
           credit: userFrom.credit - data.credit,
           trCount: userFrom.trCount + 1,
         }))
       .then(randomDelay(wait))
       .then(() => set(['user', data.userTo],
         {
-          ... userTo,
+          ...userTo,
           credit: userTo.credit + data.credit,
           trCount: userTo.trCount + 1,
         }))
