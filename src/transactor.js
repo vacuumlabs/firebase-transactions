@@ -119,6 +119,7 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
           push: userPush,
           read: userRead,
           set: userSet,
+          update: userUpdate,
         }, data)
       })
       .catch((err) => {
@@ -240,6 +241,13 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
     function userChange(path, updateFn) {
       return userRead(path)
         .then((snapshot) => userSet(path, updateFn(snapshot)))
+    }
+
+    function userUpdate(path, values) {
+      if ((values == null) || (values.constructor !== Object)) {
+        throw new Error(`The value argument in update must be a JS Object, found ${values}`)
+      }
+      Object.keys(values).forEach((key) => userSet([...path, key], values[key]))
     }
 
   }
