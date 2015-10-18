@@ -1,4 +1,5 @@
 import {List, Map, Set, fromJS, Iterable} from 'immutable'
+import * as u from './useful'
 
 export class Registry {
 
@@ -173,10 +174,10 @@ export class Registry {
     }
 
     let res = this.writes(id).reduce(apply, firebaseValue)
-    if (typeof res === 'object') {
-      res = res.toJS()
+    if (u.isImmutable(res)) {
+      return res.toJS()
+    } else {
+      return res
     }
-
-    return res
   }
 }
