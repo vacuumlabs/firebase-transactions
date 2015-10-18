@@ -19,12 +19,9 @@ function configureLogging() {
         }
       }]
     })
-    logger.setLevel('DEBUG')
+    logger.setLevel('INFO')
   }
 }
-
-// when aborted transaction should be rescheduled; in milliseconds
-const rescheduleDelay = 100
 
 class AbortError {
   constructor(msg) {
@@ -147,8 +144,8 @@ export function transactor(firebase, handlers, options = {}) {
             // here, so warn user about it)
             result = JSON.parse(JSON.stringify({result}))
           } catch (e) {
-            console.log(`Error for transaction id=${id}, result cannot be saved\n to firebase (result=${result})`)
-            result = {}
+            let msg = `Error for transaction id=${id}, result cannot be saved\n to firebase (result=${result})`
+            throw new Error(msg)
           }
           set(closedTrxRef.child(trData.frbId), {data: trData, ...result})
           remove(todoTrxRef.child(trData.frbId))
@@ -165,7 +162,6 @@ export function transactor(firebase, handlers, options = {}) {
       })
 
     function checkAbort() {
-      //logger.debug(`Checking abort id: ${id}, inProcess: ${inProcess[id]}`)
       if (runs[id] == null || runs[id].status === 'useraborted') {
         logger.debug('checkAbort: throwing abort')
         throw new AbortError('Transaction was aborted')
