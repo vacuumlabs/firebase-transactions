@@ -1,6 +1,6 @@
 import {expect} from 'chai'
 import log4js from 'log4js'
-import {test as testBasic} from './randomized_basics'
+import {test as testBasic} from './randomized_basic'
 import {test as testComplex} from './randomized_complex'
 //import * as u from '../useful'
 
