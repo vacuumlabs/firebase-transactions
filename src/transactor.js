@@ -39,15 +39,18 @@ class UserAbort {
 }
 
 
-export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
+export function transactor(firebase, handlers, options = {}) {
 
-  todoTrxRef = todoTrxRef || firebase.child(TODO_TRX_PATH)
-  closedTrxRef = closedTrxRef || firebase.child(DONE_TRX_PATH)
+  const {
+    todoTrxRef = firebase.child(TODO_TRX_PATH),
+    closedTrxRef = firebase.child(DONE_TRX_PATH),
+    trCountLimit = 50,
+    rescheduleDelay = 100
+  } = options
 
   if (!log4js.configured) configureLogging()
 
   const runs = {} // run id mapped to trData
-  const trCountLimit = 30
   const waiting = []
   const trSummary = {aborted: 0, tried: 0, processed: 0}
   const registry = new Registry()
