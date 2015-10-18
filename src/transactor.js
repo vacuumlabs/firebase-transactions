@@ -128,7 +128,7 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
         if (runs[id] != null) {
           logger.debug(`FINISH: tr no ${id}`)
           let userAborted = runs[id].status === 'useraborted'
-          let writes = userAborted ? [] : registry.writesByTrx.get(id)
+          let writes = userAborted ? [] : registry.writesByTrx.get(id, [])
           let writesRef = firebase.child('__internal/writes').child(id)
           trSummary['processed'] += 1
           runs[id].status = 'finishing'
