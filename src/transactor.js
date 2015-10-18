@@ -214,6 +214,7 @@ export function transactor(firebase, handlers, options = {}) {
     }
 
     function userAbort(msg) {
+      checkAbort()
       runs[id].abortMsg = msg
       runs[id].status = 'useraborted'
       throw new UserAbort(msg)
