@@ -1,6 +1,7 @@
 import {expect} from 'chai'
 import log4js from 'log4js'
-import {test} from './randomized_basics'
+import {test as testBasic} from './randomized_basics'
+import {test as testComplex} from './randomized_complex'
 //import * as u from '../useful'
 
 log4js.configure({
@@ -24,23 +25,37 @@ describe('randomized', function() {
   this.timeout(60 * 60 * 1000)
 
   const settingses = []
-  //const handlers = ['pay', 'payDeep']
-  const handlers = ['pay', 'payDeep', 'payValidated', 'payDeepValidated']
+  const _settingses = [
+    {userCount: 20, maxTrCredit: 100, trCount: 20},
+    {userCount: 20, maxTrCredit: 200, trCount: 20},
+    {userCount: 100, maxTrCredit: 100, trCount: 500},
+    {userCount: 100, maxTrCredit: 200, trCount: 500},
+  ]
 
-  for (let userCount of [10, 20, 50, 100]) {
-    for (let maxWait of [10, 20, 50, 100]) {
-      for (let trCount of [50, 100]) {
-        settingses.push({userCount, maxWait, trCount, baseCredit: 100, handlerNames: handlers})
-      }
+  const maxWaits = [10, 20, 50]
+
+  for (let settings of _settingses) {
+    for (let maxWait of maxWaits) {
+      settingses.push({...settings, maxWait, baseCredit: 100})
     }
   }
 
+
   for (let settings of settingses) {
-    it(`running ${JSON.stringify(settings)}`, () => {
-      return test(settings)
-        .then(({sumCredit, sumTrCount, trSummary}) => {
+    it(`running_complex ${JSON.stringify(settings)}`, () => {
+      return testComplex(settings)
+        .then(({sumCredit, minCredit, trSummary}) => {
+          expect(sumCredit).to.equal(27 * settings.baseCredit * settings.userCount)
+          expect(minCredit).to.be.at.least(0)
+          expect(trSummary.processed).to.equal(settings.trCount)
+        })
+    })
+    it(`running_basics ${JSON.stringify(settings)}`, () => {
+      return testBasic(settings)
+        .then(({sumCredit, minCredit, trSummary}) => {
           expect(sumCredit).to.equal(settings.baseCredit * settings.userCount)
-          //expect(sumTrCount).to.equal(2 * settings.trCount)
+          expect(minCredit).to.be.at.least(0)
+          expect(trSummary.processed).to.equal(settings.trCount)
         })
     })
   }
