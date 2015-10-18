@@ -90,16 +90,26 @@ export function repeat(num, fn) {
   }
 }
 
-export function randRange(n) {
-  return Math.floor(Math.random() * n)
+export function randRange(from = 0, to) {
+  let args = arguments
+  if (args.length === 1) {
+    return Math.floor(Math.random() * args[0])
+  } else if (args.length === 2) {
+    if (args[1] < args[0]) {
+      throw new Error(`'from' must be less than 'to'`)
+    }
+    return args[0] + Math.floor(Math.random() * (args[1] - args[0]))
+  } else throw new Error(`randRange accepts only 1 or 2 arguments, got ${arguments.length}`)
 }
 
-export function randomChoiceWeighed(possibilities) {
+export function randomChoiceWeighted(possibilities) {
   if (isImmutable(possibilities)) {
     possibilities = possibilities.toJS()
   }
   let r = Math.random()
-  for (let [possibility, weight] of possibilities) {
+  // last element excluded intentionally
+  for (let i = 0; i < possibilities.length - 1; i++) {
+    let [possibility, weight] = possibilities[i]
     r -= weight
     if (r <= 0) {
       return possibility

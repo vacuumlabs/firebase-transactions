@@ -16,13 +16,15 @@ export function test({trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
   }
 
   const keys = ['a', 'b', 'c']
-  const weighedDepths = [[0, 0.1], [1, 0.2], [2, 0.2], [3, 1]]
-  const depth = weighedDepths.length - 1
+  // to minimize conflicts, prefer changing smaller parts
+  // of 'credit' structure
+  const weightedDepths = [[0, 0.1], [1, 0.2], [2, 0.2], [3, 'rest']]
+  const depth = weightedDepths.length - 1
 
   const pay = ({read, set, push, abort}, data) => {
 
     function randomSplit(path) {
-      let i = u.randomChoiceWeighed(weighedDepths)
+      let i = u.randomChoiceWeighted(weightedDepths)
       return [path.slice(0, i), path.slice(i)]
     }
 
@@ -61,17 +63,17 @@ export function test({trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
       })
     }
 
-    let wait = Math.round(Math.random() * maxWait)
+    let wait = u.randRange(maxWait)
     let {userFrom, userTo, pathFrom, pathTo, credit} = data
     let whenToValidate = u.randomChoice([0, 1])
     let checkRead = u.randomChoice([true, false])
     let beforeCredit
     return randomDelay(wait)()
-    .then((_) => !checkRead && randomRead(userFrom, pathFrom)
+    .then((_) => checkRead && randomRead(userFrom, pathFrom)
       .then((_beforeCredit) => beforeCredit = _beforeCredit))
     .then(randomDelay(wait))
     .then((_) => randomUpdateBy(userFrom, pathFrom, -credit))
-    .then((_) => !checkRead && randomRead(userFrom, pathFrom)
+    .then((_) => checkRead && randomRead(userFrom, pathFrom)
       .then((afterCredit) => {
         if (beforeCredit - credit !== afterCredit) throw new Error('read is invalid')
       }))
@@ -122,7 +124,7 @@ export function test({trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
     }
 
     return {
-      name: 'johny_' + Math.random().toString(36).substring(7),
+      name: 'johny_' + u.randRange(100000, 999999).toString(36),
       credit: getCredit(depth)
     }
 

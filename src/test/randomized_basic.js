@@ -12,11 +12,11 @@ const firebase = new Firebase(firebaseUrl)
 export function test({trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
 
   function randomDelay(maxWait) {
-    return (val) => Promise.delay(Math.round(Math.random() * maxWait))
+    return (val) => Promise.delay(u.randRange(maxWait))
   }
 
   const pay = ({read, set, push, abort}, data) => {
-    let wait = Math.round(Math.random() * maxWait)
+    let wait = u.randRange(maxWait)
     let creditFrom, creditTo
     return read(['user', data.userFrom, 'credit'])
     .then((_creditFrom) => creditFrom = _creditFrom)
@@ -42,7 +42,7 @@ export function test({trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
 
   function getRandomUser() {
     return {
-      name: 'johny_' + Math.random().toString(36).substring(7),
+      name: 'johny_' + u.randRange(100000, 999999).toString(36),
       credit: baseCredit,
     }
   }
