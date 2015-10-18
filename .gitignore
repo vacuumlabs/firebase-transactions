@@ -12,3 +12,5 @@ build/
 # Temporary files
 *.swp
 
+# myself experimenting
+experiment.js
