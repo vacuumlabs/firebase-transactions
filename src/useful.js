@@ -90,6 +90,24 @@ export function repeat(num, fn) {
   }
 }
 
+export function randRange(n) {
+  return Math.floor(Math.random() * n)
+}
+
+export function randomChoiceWeighed(possibilities) {
+  if (isImmutable(possibilities)) {
+    possibilities = possibilities.toJS()
+  }
+  let r = Math.random()
+  for (let [possibility, weight] of possibilities) {
+    r -= weight
+    if (r <= 0) {
+      return possibility
+    }
+  }
+  return possibilities[possibilities.length - 1]
+}
+
 export function randomChoice(list) {
   if (Iterable.isIterable(list)) return list.get(Math.floor(Math.random() * list.count()))
   else return list[Math.floor(Math.random() * list.length)]
@@ -105,6 +123,10 @@ export function repeatAsync(n, f) {
     res = res.then((_) => f(i))
   })
   return res
+}
+
+export function isImmutable(o) {
+  return Iterable.isIterable(o)
 }
 
 (() => {
