@@ -49,7 +49,7 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
   const runs = {} // run id mapped to trData
   const trCountLimit = 30
   const waiting = []
-  const trSummary = {}
+  const trSummary = {aborted: 0, tried: 0, processed: 0}
   const registry = new Registry()
   let nextTrId = 0
   let nextRunId = 0
@@ -58,14 +58,6 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
   function _abort(id) {
     registry.cleanup(id)
     delete runs[id]
-  }
-
-  function logTrSummary(id, op) {
-    let trId = runs[id].id
-    if (trSummary[trId] == null) {
-      trSummary[trId] = {'try': 0, 'abort': 0, 'process': 0}
-    }
-    trSummary[trId][op]++
   }
 
   function refFromPath(path) {
@@ -90,7 +82,7 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
       throw new Error('shouldnt abort transaction that is already aborted')
     }
     logger.debug(`CLEANUP & ABORT : tr no ${id}`)
-    logTrSummary(id, 'abort')
+    trSummary['aborted'] += 1
     scheduleLater(runs[id])
     _abort(id)
   }
@@ -111,7 +103,7 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
     return Promise.resolve()
       .then(() => {
         logger.debug(`starting handler ${id}`)
-        logTrSummary(id, 'try')
+        trSummary['tried'] += 1
         return handler({
           abort: userAbort,
           change: userChange,
@@ -138,7 +130,7 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
           let userAborted = runs[id].status === 'useraborted'
           let writes = userAborted ? [] : registry.writesByTrx.get(id)
           let writesRef = firebase.child('__internal/writes').child(id)
-          logTrSummary(id, 'process')
+          trSummary['processed'] += 1
           runs[id].status = 'finishing'
           set(writesRef, writes)
           writes.forEach((write) => {
@@ -280,7 +272,8 @@ export function transactor(firebase, handlers, todoTrxRef, closedTrxRef) {
 
   return {
     'stop': () => todoTrxRef.off('child_added', onChildAdded),
-    'registry': registry
+    'registry': registry,
+    'trSummary': trSummary,
   }
 
 }
