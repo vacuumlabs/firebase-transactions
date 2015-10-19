@@ -1,4 +1,3 @@
-import Firebase from 'firebase'
 import {Promise} from 'bluebird'
 import {fromJS} from 'immutable'
 import * as u from '../useful'
@@ -6,10 +5,7 @@ import {transactor} from '../transactor'
 import {read, set, push} from '../firebase_actions'
 import {TODO_TRX_PATH, DONE_TRX_PATH} from '../settings'
 
-const firebaseUrl = 'https://gugugu.firebaseio.com'
-const firebase = new Firebase(firebaseUrl)
-
-export function test({trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
+export function test(firebase, {trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
 
   function randomDelay(maxWait) {
     return (_) => Promise.delay(u.randRange(maxWait))
