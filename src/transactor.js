@@ -112,7 +112,6 @@ export function transactor(firebase, handlers, options = {}) {
           read: userRead,
           set: userSet,
           update: userUpdate,
-          updateBy: userUpdateBy,
         }, data)
       })
       .catch((err) => {
@@ -240,12 +239,6 @@ export function transactor(firebase, handlers, options = {}) {
       return firebase.push().key()
     }
 
-    function userChange(path, updateFn) {
-      path = normalizePath(path)
-      return userRead(path)
-        .then((snapshot) => userSet(path, updateFn(snapshot)))
-    }
-
     function userUpdate(path, values) {
       path = normalizePath(path)
       if ((values == null) || (values.constructor !== Object)) {
@@ -254,7 +247,7 @@ export function transactor(firebase, handlers, options = {}) {
       Object.keys(values).forEach((key) => userSet([...path, key], values[key]))
     }
 
-    function userUpdateBy(path, fn) {
+    function userChange(path, fn) {
       path = normalizePath(path)
       if (typeof fn !== 'function') {
         throw new Error(`fn argument must be a function, got ${fn} instead`)
