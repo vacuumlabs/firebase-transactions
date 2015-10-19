@@ -1,9 +1,9 @@
 import {Promise} from 'bluebird'
 import {fromJS} from 'immutable'
+import {getClient} from '../client'
 import * as u from '../useful'
 import {transactor} from '../transactor'
-import {read, set, push} from '../firebase_useful'
-import {TODO_TRX_PATH, DONE_TRX_PATH} from '../settings'
+import {read, set} from '../firebase_useful'
 
 export function test(firebase, {trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
 
@@ -58,7 +58,8 @@ export function test(firebase, {trCount, baseCredit, maxTrCredit, userCount, max
   }
 
   function run() {
-    let toWait = []
+    const toWait = []
+    const toFinish = []
     toWait.push(set(firebase, null))
     toWait.push(set(firebase.child('__internal/fbkeep'), 'fbkeep'))
 
@@ -71,27 +72,18 @@ export function test(firebase, {trCount, baseCredit, maxTrCredit, userCount, max
       toWait.push(set(userRef.child(i), user))
     })
 
-    const transactionRef = firebase.child(TODO_TRX_PATH)
+    const submitTrx = getClient(firebase)
+
     for (let i = 0; i < trCount; i++) {
-      toWait.push(push(transactionRef, getRandomTransaction(usersIds)))
+      toFinish.push(submitTrx(getRandomTransaction(usersIds)))
     }
 
     let handler
 
     return Promise.all(toWait).then((_) => {
-      let processedCount = 0
       // start transactor; process all submitted transactions
       handler = transactor(firebase, handlers)
-      // completes, when we have ${trCount} closed transactions
-      return new Promise((resolve, reject) => {
-        firebase.child(DONE_TRX_PATH).on('child_added', () => {
-          processedCount += 1
-          if (processedCount === trCount) {
-            resolve()
-          }
-        })
-      })
-    })
+    }).then((_) => Promise.all(toFinish))
     .then((_) => read(firebase.child('user')))
     .then((users) => {
       handler.stop()
