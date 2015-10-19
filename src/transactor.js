@@ -112,6 +112,7 @@ export function transactor(firebase, handlers, options = {}) {
           read: userRead,
           set: userSet,
           update: userUpdate,
+          updateBy: userUpdateBy,
         }, data)
       })
       .catch((err) => {
@@ -195,8 +196,15 @@ export function transactor(firebase, handlers, options = {}) {
       checkAbort()
     }
 
+    function normalizePath(path) {
+      if (u.isImmutable(path)) path = path.toJS()
+      if (u.isArray(path)) return path
+      throw new Error(`path must be an array or immutable list; got ${path} instead`)
+    }
+
     // TODO if possible, make DB operations accept also firebase ref
     function userRead(path) {
+      path = normalizePath(path)
       if (u.any(path, (e) => (e == null))) throw new Error(`READ ERROR: undefined / null present in path: ${path}`)
       handlePossibleConflict(registry.conflictingWithRead(path))
       registry.addRead(id, path)
@@ -209,6 +217,7 @@ export function transactor(firebase, handlers, options = {}) {
     }
 
     function userSet(path, value) {
+      path = normalizePath(path)
       handlePossibleConflict(registry.conflictingWithWrite(path))
       registry.addWrite(id, path, value)
     }
@@ -221,6 +230,7 @@ export function transactor(firebase, handlers, options = {}) {
     }
 
     function userPush(path, value) {
+      path = normalizePath(path)
       let ref = refFromPath(path).push()
       userSet([...path, ref.key()], value)
       return ref
@@ -231,17 +241,28 @@ export function transactor(firebase, handlers, options = {}) {
     }
 
     function userChange(path, updateFn) {
+      path = normalizePath(path)
       return userRead(path)
         .then((snapshot) => userSet(path, updateFn(snapshot)))
     }
 
     function userUpdate(path, values) {
+      path = normalizePath(path)
       if ((values == null) || (values.constructor !== Object)) {
         throw new Error(`The value argument in update must be a JS Object, found ${values}`)
       }
       Object.keys(values).forEach((key) => userSet([...path, key], values[key]))
     }
 
+    function userUpdateBy(path, fn) {
+      path = normalizePath(path)
+      if (typeof fn !== 'function') {
+        throw new Error(`fn argument must be a function, got ${fn} instead`)
+      }
+      return userRead(path)
+        .then((val) => fn(val))
+        .then((res) => userSet(path, res))
+    }
   }
 
   function tryConsumeWaiting() {
