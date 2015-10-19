@@ -1,5 +1,4 @@
 import {fromJS, Iterable} from 'immutable'
-import {assert} from 'chai'
 
 export function jsify(obj) {
   if (obj == null) {
@@ -136,26 +135,11 @@ export function repeatAsync(n, f) {
 }
 
 export function isImmutable(o) {
+  // this is the best solution I found:
+  // http://stackoverflow.com/questions/31907470/how-to-check-if-object-is-immutable
   return Iterable.isIterable(o)
 }
 
-(() => {
-  assert.equal(isIterable([1, 2, 3]), true)
-  assert.equal(isIterable(fromJS([1, 2, 3])), true)
-  assert.equal(isIterable(fromJS({a: 'b'})), true)
-  assert.equal(isIterable('ahoj'), true)
-  assert.equal(isIterable(true), false)
-  assert.equal(isIterable({a: 'b'}), false)
-  assert.equal(isIterable(null), false)
-  assert.equal(isIterable(undefined), false)
-})();
-
-(() => {
-  let arr = [1, 2]
-  extend(arr, [3, 4])
-  assert.deepEqual(arr, [1, 2, 3, 4])
-  arr = [1, 2]
-  // does it work with iterable other than Array?
-  extend(arr, fromJS([3, 4]))
-  assert.deepEqual(arr, [1, 2, 3, 4])
-})()
+export function isArray(arr) {
+  return (typeof arr === 'object') && (arr.constructor === Array)
+}
