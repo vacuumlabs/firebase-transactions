@@ -18,7 +18,7 @@ gulp.task('end', () => {
 })
 
 gulp.task('_test', () => {
-  return gulp.src('src/test/randomized_runner.js', {read: false})
+  return gulp.src('src/test/*.js', {read: false})
       // gulp-mocha needs filepaths so you can't have any plugins before it
       .pipe(mocha({reporter: 'nyan'}))
 })
