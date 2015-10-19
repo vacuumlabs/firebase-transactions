@@ -1,6 +1,18 @@
 import i from 'immutable'
 import {Promise} from 'bluebird'
 
+export function runSandboxed(firebase, fn, options = {}) {
+  const {deleteAfter = true, prefix = ''} = options
+  let fbid = firebase.push().key()
+  let testId = `${prefix}${fbid}`
+  let testRef = firebase.child(testId)
+  return Promise.resolve()
+    .then(() => fn(testRef))
+    .finally((_) => {
+      if (deleteAfter) set(testRef, null)
+    })
+}
+
 export function toJS(value) {
   return (value && value.toJS) ? value.toJS() : value
 }

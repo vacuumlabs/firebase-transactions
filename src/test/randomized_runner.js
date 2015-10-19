@@ -1,7 +1,7 @@
 import Firebase from 'firebase'
 import {expect} from 'chai'
 import log4js from 'log4js'
-import {set} from '../firebase_useful'
+import {runSandboxed} from '../firebase_useful'
 import {test as testBasic} from './randomized_basic'
 import {test as testComplex} from './randomized_complex'
 //import * as u from '../useful'
@@ -23,14 +23,8 @@ logger.setLevel('WARN')
 log4js.configured = true
 
 const firebaseUrl = 'https://gugugu.firebaseio.com'
-const firebase = new Firebase(firebaseUrl)
+const globalFirebase = new Firebase(firebaseUrl)
 
-function runWithCustomFirebase(fn) {
-  let testId = firebase.push().key()
-  let testRef = firebase.child(testId)
-  return fn(testRef)
-    .finally((_) => set(testRef, null))
-}
 
 describe('randomized', function() {
 
@@ -55,24 +49,24 @@ describe('randomized', function() {
 
   for (let settings of settingses) {
     it(`running_complex ${JSON.stringify(settings)}`, () => {
-      return runWithCustomFirebase((firebase) => {
+      return runSandboxed(globalFirebase, (firebase) => {
         return testComplex(firebase, settings)
           .then(({sumCredit, minCredit, trSummary}) => {
             expect(sumCredit).to.equal(27 * settings.baseCredit * settings.userCount)
             expect(minCredit).to.be.at.least(0)
             expect(trSummary.processed).to.equal(settings.trCount)
           })
-      })
+      }, {prefix: 'automated-test'})
     })
     it(`running_basics ${JSON.stringify(settings)}`, () => {
-      return runWithCustomFirebase((firebase) => {
+      return runSandboxed(globalFirebase, (firebase) => {
         return testBasic(firebase, settings)
           .then(({sumCredit, minCredit, trSummary}) => {
             expect(sumCredit).to.equal(settings.baseCredit * settings.userCount)
             expect(minCredit).to.be.at.least(0)
             expect(trSummary.processed).to.equal(settings.trCount)
           })
-      })
+      }, {prefix: 'automated-test'})
     })
   }
 
