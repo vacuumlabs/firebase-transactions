@@ -2,7 +2,7 @@ import {Promise} from 'bluebird'
 import {Registry} from './registry'
 import {Set} from 'immutable'
 import * as u from './useful'
-import {read, set, remove} from './firebase_actions'
+import {read, set, remove} from './firebase_useful'
 import log4js from 'log4js'
 import {TODO_TRX_PATH, DONE_TRX_PATH} from './settings'
 

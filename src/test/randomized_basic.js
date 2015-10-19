@@ -2,7 +2,7 @@ import {Promise} from 'bluebird'
 import {fromJS} from 'immutable'
 import * as u from '../useful'
 import {transactor} from '../transactor'
-import {read, set, push} from '../firebase_actions'
+import {read, set, push} from '../firebase_useful'
 import {TODO_TRX_PATH, DONE_TRX_PATH} from '../settings'
 
 export function test(firebase, {trCount, baseCredit, maxTrCredit, userCount, maxWait}) {

@@ -1,7 +1,7 @@
 import Firebase from 'firebase'
 import {expect} from 'chai'
 import log4js from 'log4js'
-import {set} from '../firebase_actions'
+import {set} from '../firebase_useful'
 import {test as testBasic} from './randomized_basic'
 import {test as testComplex} from './randomized_complex'
 //import * as u from '../useful'

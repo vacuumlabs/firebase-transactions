@@ -1,7 +1,7 @@
 import Firebase from 'firebase'
 import Promise from 'bluebird'
 import {is, fromJS, Set} from 'immutable'
-import {read, set} from './firebase_actions'
+import {read, set} from './firebase_useful'
 import * as u from './useful'
 
 const firebaseUrl = 'https://gugugu.firebaseio.com'
