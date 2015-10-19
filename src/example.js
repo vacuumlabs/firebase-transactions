@@ -6,7 +6,7 @@ const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebaseGlobal = new Firebase(firebaseUrl)
 
 runSandboxed(firebaseGlobal, (firebase) => {
-  return test(firebase.child('example'), {trCount: 100, baseCredit: 100, maxTrCredit: 100, userCount: 20, maxWait: 0})
+  return test(firebase, {trCount: 100, baseCredit: 100, maxTrCredit: 100, userCount: 20, maxWait: 0})
   .then((res) => {
     console.log(res)
   }).then(() => process.exit())
