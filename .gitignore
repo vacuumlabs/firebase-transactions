@@ -13,4 +13,4 @@ build/
 *.swp
 
 # myself experimenting
-experiment.js
+internal_*.js
