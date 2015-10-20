@@ -9,6 +9,8 @@ export function getClient(firebase, options = {}) {
     let resultRef = firebase.child(doneTrxPath).child(trxId)
     return new Promise((resolve, reject) => {
       let fn = resultRef.on('value', (snap) => {
+        // after subscription, we first got 'null' value so
+        // we have to ignore this
         if (snap.val() != null) {
           resolve(snap.val().result)
           resultRef.off('value', fn)
