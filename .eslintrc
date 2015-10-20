@@ -96,7 +96,8 @@
     // React
     // Not needed. "react/display-name": 1,
     "react/jsx-boolean-value": 1,
-    "react/jsx-quotes": 1,
+    "react/jsx-quotes": 0, // deprecated rule
+    "jsx-quotes": [1, "prefer-double"],
     "react/jsx-no-undef": 2,
     "react/jsx-sort-props": 0,
     "react/jsx-sort-prop-types": 0,
