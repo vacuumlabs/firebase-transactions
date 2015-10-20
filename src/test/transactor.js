@@ -6,8 +6,10 @@ import {transactor} from '../transactor'
 import {firebaseUrl} from '../settings'
 
 describe('transactor', function() {
+
+  const globalFirebase = new Firebase(firebaseUrl)
+
   it(`change`, () => {
-    const globalFirebase = new Firebase(firebaseUrl)
     return runSandboxed(globalFirebase, (firebase) => {
       const submitTrx = getClient(firebase)
       set(firebase.child('obj'), {'val': 1})
@@ -22,13 +24,26 @@ describe('transactor', function() {
   })
 
   it(`result`, () => {
-    const globalFirebase = new Firebase(firebaseUrl)
     return runSandboxed(globalFirebase, (firebase) => {
       const submitTrx = getClient(firebase)
       const returnHello = ({}, data) => 'hello'
       transactor(firebase, {returnHello})
       return submitTrx({type: 'returnHello', data: {}})
         .then((res) => expect(res).to.equal('hello'))
+    }, {prefix: 'test', deleteAfter: true})
+  })
+
+  it(`handle throwing trx`, () => {
+    return runSandboxed(globalFirebase, (firebase) => {
+      process.env.supressErrors = true
+      const submitTrx = getClient(firebase)
+      const throwing = ({}, data) => {
+        throw new Error('Not everything is awesome')
+      }
+      transactor(firebase, {throwing})
+      return submitTrx({type: 'throwing', data: {}})
+        .then((res) => expect(res).to.deep.equal({exception: 'Error: Not everything is awesome'}))
+        .finally(() => process.env.supressErrors = false)
     }, {prefix: 'test', deleteAfter: true})
   })
 
