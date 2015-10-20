@@ -115,9 +115,18 @@ export function transactor(firebase, handlers, options = {}) {
         }, data)
       })
       .catch((err) => {
-        if (err instanceof UserAbort) {
-          logger.debug(`user abort ${id}, msg: ${err.msg}`)
-          return {error: err.msg}
+        if (!(err instanceof AbortError)) {
+          if (err instanceof UserAbort) {
+            logger.debug(`user abort ${id}, msg: ${err.msg}`)
+            return {error: err.msg}
+          } else {
+            if (!process.env.supressErrors) {
+              logger.error(`Unknown error abort ${err} ${err.stack}`)
+              console.error(err)
+              console.error(err.stack)
+            }
+            return {exception: `${err}`}
+          }
         }
         throw err
       })
