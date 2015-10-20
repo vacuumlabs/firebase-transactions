@@ -1,3 +1,4 @@
+import {Promise} from 'bluebird'
 import {TODO_TRX_PATH, DONE_TRX_PATH} from './settings'
 import {push} from './firebase_useful'
 
