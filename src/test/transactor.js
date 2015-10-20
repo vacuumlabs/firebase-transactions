@@ -3,10 +3,10 @@ import {expect} from 'chai'
 import {runSandboxed, set, read} from '../firebase_useful'
 import {getClient} from '../client'
 import {transactor} from '../transactor'
+import {firebaseUrl} from '../settings'
 
 describe('transactor', function() {
   it(`updateBy, result`, () => {
-    const firebaseUrl = 'https://gugugu.firebaseio.com'
     const globalFirebase = new Firebase(firebaseUrl)
     return runSandboxed(globalFirebase, (firebase) => {
       const submitTrx = getClient(firebase)

@@ -4,6 +4,7 @@ import log4js from 'log4js'
 import {runSandboxed} from '../firebase_useful'
 import {test as testBasic} from './randomized_basic'
 import {test as testComplex} from './randomized_complex'
+import {firebaseUrl} from '../settings'
 //import * as u from '../useful'
 
 log4js.configure({
@@ -22,9 +23,7 @@ logger.setLevel('WARN')
 // individual components shouldn't use their defaults
 log4js.configured = true
 
-const firebaseUrl = 'https://gugugu.firebaseio.com'
 const globalFirebase = new Firebase(firebaseUrl)
-
 
 describe('randomized', function() {
 
