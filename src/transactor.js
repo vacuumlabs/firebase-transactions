@@ -4,7 +4,7 @@ import {Set} from 'immutable'
 import * as u from './useful'
 import {read, set, remove} from './firebase_useful'
 import log4js from 'log4js'
-import {TODO_TRX_PATH, DONE_TRX_PATH} from './settings'
+import {TODO_TRX_PATH, DONE_TRX_PATH, INTERNAL_TRX_PATH} from './settings'
 
 let logger = log4js.getLogger('transactor')
 
@@ -41,6 +41,8 @@ export function transactor(firebase, handlers, options = {}) {
   const {
     todoTrxRef = firebase.child(TODO_TRX_PATH),
     closedTrxRef = firebase.child(DONE_TRX_PATH),
+    internalRef = firebase.child(INTERNAL_TRX_PATH),
+    internalWritesRef = internalRef.child('writes'),
     trCountLimit = 50,
     rescheduleDelay = 100
   } = options
@@ -138,7 +140,7 @@ export function transactor(firebase, handlers, options = {}) {
           logger.debug(`FINISH: tr no ${id}`)
           let userAborted = runs[id].status === 'useraborted'
           let writes = userAborted ? [] : registry.writesByTrx.get(id, [])
-          let writesRef = firebase.child('__internal/writes').child(id)
+          let writesRef = internalWritesRef.child(id)
           trSummary['processed'] += 1
           runs[id].status = 'finishing'
           set(writesRef, writes)
@@ -265,7 +267,7 @@ export function transactor(firebase, handlers, options = {}) {
         .then((val) => fn(val))
         .then((res) => userSet(path, res))
     }
-  }
+  } // end processTr
 
   function tryConsumeWaiting() {
     while (waiting.length > 0 && trCount < trCountLimit) {
@@ -280,6 +282,11 @@ export function transactor(firebase, handlers, options = {}) {
         })
     }
   }
+
+  // run transactor
+  //read(internalWritesRef)
+  //.then((val) => {
+  //})
 
   let onChildAdded = todoTrxRef.on('child_added', (childSnapshot, prevChildKey) => {
     let trData = childSnapshot.val()
