@@ -1,4 +1,5 @@
 import i from 'immutable'
+import Firebase from 'firebase'
 import {Promise} from 'bluebird'
 
 export function runSandboxed(firebase, fn, options = {}) {
@@ -40,6 +41,9 @@ export function promisify(callback: Function) {
 export function getAuth(ref) {return fromJS(ref.getAuth()) }
 
 function _change(ref, method, value) {
+  if (!((arguments.length === 3) && (ref instanceof Firebase) && (typeof method === 'string'))) {
+    throw new Error(`bad arguments for '_change' function, got ${ref} ${method} ${value}`)
+  }
   return promisify((c) => ref[method](toJS(value), c))
 }
 
@@ -56,6 +60,9 @@ export function once(ref, eventType) {
 }
 
 export function read(ref) {
+  if (!((arguments.length === 1) && (ref instanceof Firebase))) {
+    throw new Error(`bad arguments for 'read' function, got ${arguments}`)
+  }
   return new Promise((resolve, reject) => ref.once('value', (snap) => {resolve(snap.val())}, reject))
 }
 
