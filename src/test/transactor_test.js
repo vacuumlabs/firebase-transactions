@@ -8,6 +8,7 @@ import {firebaseUrl} from '../settings'
 describe('transactor', function() {
 
   const globalFirebase = new Firebase(firebaseUrl)
+  this.timeout(60 * 60 * 1000)
 
   it(`change`, () => {
     return runSandboxed(globalFirebase, (firebase) => {
@@ -30,7 +31,7 @@ describe('transactor', function() {
       transactor(firebase, {returnHello})
       return submitTrx({type: 'returnHello', data: {}})
         .then((res) => expect(res).to.equal('hello'))
-    }, {prefix: 'test', deleteAfter: true})
+    }, {prefix: 'test'})
   })
 
   it(`handle throwing trx`, () => {
@@ -44,6 +45,22 @@ describe('transactor', function() {
       return submitTrx({type: 'throwing', data: {}})
         .then((res) => expect(res).to.deep.equal({exception: 'Error: Not everything is awesome'}))
         .finally(() => process.env.supressErrors = false)
+    }, {prefix: 'test'})
+  })
+
+  it(`recovers from fail`, () => {
+    return runSandboxed(globalFirebase, (firebase) => {
+      return set(firebase.child('__internal/writes'), {
+        aaa: {path: ['a', 'aa'], value: 'aaa'},
+        bbb: {path: ['b', 'bb'], value: 'bbb'},
+      }).then(() => {
+        const handler = transactor(firebase, {})
+        return handler.stop()
+      })
+      .then(() => read(firebase.child('a')))
+      .then((res) => expect(res).to.deep.equal({aa: 'aaa'}))
+      .then(() => read(firebase.child('b')))
+      .then((res) => expect(res).to.deep.equal({bb: 'bbb'}))
     }, {prefix: 'test', deleteAfter: true})
   })
 

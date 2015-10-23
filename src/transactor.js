@@ -283,25 +283,36 @@ export function transactor(firebase, handlers, options = {}) {
     }
   }
 
-  // run transactor
-  //read(internalWritesRef)
-  //.then((val) => {
-  //})
+  const canStart = read(internalWritesRef)
+  .then((writes) => {
+    const waitForWrites = []
+    writes = writes || []
+    u.forEachKV(writes, (_, write) => {
+      waitForWrites.push(set(refFromPath(write.path), write.value))
+    })
+    waitForWrites.push(set(internalWritesRef, null))
+    return Promise.all(waitForWrites)
+  })
 
-  let onChildAdded = todoTrxRef.on('child_added', (childSnapshot, prevChildKey) => {
-    let trData = childSnapshot.val()
-    if (trData.type == null) {
-      logger.error('malformed data: ', trData)
-      throw new Error('malformed trData')
-    }
-    trData.trId = nextTrId++
-    logger.debug(`SCHEDULED: tr no ${trData.trId} data: ${JSON.stringify(trData)}`)
-    trData.frbId = childSnapshot.key()
-    pushWaiting(trData)
+
+  // run transactor, remember the firebase-listening reference
+  let onChildAdded
+  canStart.then(() => {
+    onChildAdded = todoTrxRef.on('child_added', (childSnapshot, prevChildKey) => {
+      let trData = childSnapshot.val()
+      if (trData.type == null) {
+        logger.error('malformed data: ', trData)
+        throw new Error('malformed trData')
+      }
+      trData.trId = nextTrId++
+      logger.debug(`SCHEDULED: tr no ${trData.trId} data: ${JSON.stringify(trData)}`)
+      trData.frbId = childSnapshot.key()
+      pushWaiting(trData)
+    })
   })
 
   return {
-    'stop': () => todoTrxRef.off('child_added', onChildAdded),
+    'stop': () => canStart.then((_) => todoTrxRef.off('child_added', onChildAdded)),
     'registry': registry,
     'trSummary': trSummary,
   }
