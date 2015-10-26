@@ -5,8 +5,8 @@ import {push} from './firebase_useful'
 export function getClient(firebase, options = {}) {
   let {todoTrxPath = TODO_TRX_PATH, doneTrxPath = DONE_TRX_PATH} = options
   let submitRef = firebase.child(todoTrxPath)
-  return (data) => {
-    const trxId = push(submitRef, data).key()
+  return (type, data) => {
+    const trxId = push(submitRef, {type, data}).key()
     let resultRef = firebase.child(doneTrxPath).child(trxId)
     return new Promise((resolve, reject) => {
       let fn = resultRef.on('value', (snap) => {

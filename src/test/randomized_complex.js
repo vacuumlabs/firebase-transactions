@@ -138,7 +138,7 @@ export function test(firebase, {trCount, baseCredit, maxTrCredit, userCount, max
     let pathFrom = getRandomPath()
     let pathTo = getRandomPath()
     const credit = u.randRange(maxTrCredit)
-    return {type: 'pay', data: {userFrom, userTo, credit, pathFrom, pathTo}}
+    return {userFrom, userTo, credit, pathFrom, pathTo}
   }
 
   function run() {
@@ -159,7 +159,7 @@ export function test(firebase, {trCount, baseCredit, maxTrCredit, userCount, max
     const submitTrx = getClient(firebase)
 
     for (let i = 0; i < trCount; i++) {
-      toFinish.push(submitTrx(getRandomTransaction(usersIds)))
+      toFinish.push(submitTrx('pay', getRandomTransaction(usersIds)))
     }
 
     let handler

@@ -18,7 +18,7 @@ describe('transactor', function() {
         return change(['obj', 'val'], (x) => x + 1)
       }
       transactor(firebase, {incByOne})
-      return submitTrx({type: 'incByOne', data: {}})
+      return submitTrx('incByOne', {})
         .then((_) => read(firebase.child('obj/val')))
         .then((val) => expect(val).to.equal(2))
     }, {prefix: 'test', deleteAfter: true})
@@ -29,7 +29,7 @@ describe('transactor', function() {
       const submitTrx = getClient(firebase)
       const returnHello = ({}, data) => 'hello'
       transactor(firebase, {returnHello})
-      return submitTrx({type: 'returnHello', data: {}})
+      return submitTrx('returnHello', {})
         .then((res) => expect(res).to.equal('hello'))
     }, {prefix: 'test'})
   })
@@ -42,7 +42,7 @@ describe('transactor', function() {
         throw new Error('Not everything is awesome')
       }
       transactor(firebase, {throwing})
-      return submitTrx({type: 'throwing', data: {}})
+      return submitTrx('throwing', {})
         .then((res) => expect(res).to.deep.equal({exception: 'Error: Not everything is awesome'}))
         .finally(() => process.env.supressErrors = false)
     }, {prefix: 'test'})
