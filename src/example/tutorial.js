@@ -1,13 +1,24 @@
+// begin-fragment setup
 import Firebase from 'firebase'
-import {getClient} from '../client'
-import * as u from '../useful'
-import {transactor} from '../transactor'
-import {set} from '../firebase_useful'
+import {getClient} from '../firebase-transactions'
+import {transactor} from  '../firebase-transactions'
+import {firebaseUseful} from  '../firebase-transactions'
 
+// promisified Firebase.set
+const {set} = firebaseUseful
 const firebaseUrl = 'https://gugugu.firebaseio.com'
 const firebaseGlobal = new Firebase(firebaseUrl)
 const firebase = firebaseGlobal.child(`tutorial ${new Date()}`)
 
+function randRange(from, to) {
+  return from + Math.floor(Math.random() * (to - from))
+}
+
+const userCount = 100
+const trCount = 1000
+// end-fragment setup
+
+// begin-fragment pay
 const pay = ({read, set, push, abort, change}, data) => {
   return change(['user', data.userFrom, 'credit'], (c) => c - data.credit)
   .then(() => change(['user', data.userTo, 'credit'], (c) => c + data.credit))
@@ -18,18 +29,9 @@ const pay = ({read, set, push, abort, change}, data) => {
     }
   })
 }
+// end-fragment pay
 
-const userCount = 100
-const trCount = 1000
-
-function getRandomTransaction() {
-  const userFrom = u.randRange(userCount)
-  // userTo will be different from userTo
-  const userTo = (userFrom + u.randRange(userCount - 1)) % userCount
-  const credit = u.randRange(100)
-  return {type: 'pay', data: {userFrom, userTo, credit}}
-}
-
+// begin-fragment populate
 let toWait = []
 set(firebase, null)
 // to avoid annoying flickering of firebase in-browser explorer,
@@ -42,13 +44,27 @@ for (let i = 0; i < userCount; i++) {
   let user = {name: `Johny${i}`, credit: 100}
   set(userRef.child(i), user)
 }
+// end-fragment populate
 
+// begin-fragment create_client
 const submitTrx = getClient(firebase)
+// end-fragment create_client
 
-for (let i = 0; i < trCount; i++) {
-  submitTrx(getRandomTransaction(usersIds))
+// begin-fragment submit_transactions
+function getRandomPayTransaction() {
+  const userFrom = randRange(0, userCount)
+  // userTo will be different from userTo
+  const userTo = (userFrom + randRange(0, userCount - 1)) % userCount
+  const credit = randRange(0, 100)
+  return {userFrom, userTo, credit}
 }
 
-transactor(firebase, {pay})
+for (let i = 0; i < trCount; i++) {
+  submitTrx('pay', getRandomPayTransaction(usersIds))
+}
+// end-fragment submit_transactions
 
+// begin-fragment run_transactor
+transactor(firebase, {pay})
+// end-fragment run_transactor
 
