@@ -2,6 +2,8 @@ import gulp from 'gulp'
 import mocha from 'gulp-mocha'
 import runSequence from 'run-sequence'
 import eslint from 'gulp-eslint'
+import sourcemaps from 'gulp-sourcemaps'
+import babel from 'gulp-babel'
 
 gulp.task('eslint', () => {
   return gulp.src([
@@ -24,3 +26,11 @@ gulp.task('_test', () => {
 })
 
 gulp.task('test', (done) => runSequence('_test', 'end', done))
+
+gulp.task('build', function() {
+  return gulp.src('src/**/*.js')
+    .pipe(sourcemaps.init())
+    .pipe(babel({stage: 0}))
+    .pipe(sourcemaps.write('./'))
+    .pipe(gulp.dest('dist'))
+})
