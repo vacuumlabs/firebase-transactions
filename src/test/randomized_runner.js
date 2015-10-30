@@ -7,22 +7,6 @@ import {test as testComplex} from './randomized_complex'
 import {firebaseUrl} from '../settings'
 //import * as u from '../useful'
 
-log4js.configure({
-  appenders: [{
-    type: 'console',
-    layout: {
-      type: 'pattern',
-      pattern: '[%[%5.5p%]] - %m'
-    }
-  }]
-})
-
-const logger = log4js.getLogger('transactor')
-logger.setLevel('WARN')
-// use this setting to indicate that logging was already set and
-// individual components shouldn't use their defaults
-log4js.configured = true
-
 const globalFirebase = new Firebase(firebaseUrl)
 
 describe('randomized', function() {
