@@ -6,8 +6,16 @@
   "scripts": {
     "test": "gulp test"
   },
-  "author": "",
-  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vacuumlabs/firebase-transactions.git"
+  },
+  "author": "VacuumLabs",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/vacuumlabs/firebase-transactions.git"
+  },
+  "homepage": "https://github.com/vacuumlabs/vlux#readme",
   "dependencies": {
     "bluebird": "^2.10.1",
     "firebase": "^2.2.9",
