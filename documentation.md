@@ -1,4 +1,4 @@
-#Documentaion
+#Documentation
 ## Client
 
 #### getClient(firebase, options = {})
@@ -74,5 +74,5 @@ of sets, it's also synchronous operation.
 #### abort(msg)
 Aborts the transaction. None modification done will be saved to the DB, the transaction will be
 understood as finished and the transactor won't try to repeat it. The Promise returned by
-submitTransaction() call (on client side) will fulfill with {user_error: msg}
+submitTransaction() call (on client side) will fulfill with {userError: msg}
 Argument 'msg' is any object serializable by Firebase (ususally the simple String)

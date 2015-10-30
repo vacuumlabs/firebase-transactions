@@ -43,7 +43,7 @@ describe('transactor', function() {
       }
       transactor(firebase, {throwing})
       return submitTrx('throwing', {})
-        .then((res) => expect(res).to.deep.equal({exception: 'Error: Not everything is awesome'}))
+        .then((res) => expect(res).to.deep.equal({error: 'Error: Not everything is awesome'}))
         .finally(() => process.env.supressErrors = false)
     }, {prefix: 'test'})
   })

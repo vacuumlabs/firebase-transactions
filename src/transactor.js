@@ -96,7 +96,7 @@ class UserAbort {
  * #### abort(msg)
  * Aborts the transaction. None modification done will be saved to the DB, the transaction will be
  * understood as finished and the transactor won't try to repeat it. The Promise returned by
- * submitTransaction() call (on client side) will fulfill with {user_error: msg}
+ * submitTransaction() call (on client side) will fulfill with {userError: msg}
  * Argument 'msg' is any object serializable by Firebase (ususally the simple String)
  *
  ***/
@@ -183,14 +183,14 @@ export function transactor(firebase, handlers, options = {}) {
         if (!(err instanceof AbortError)) {
           if (err instanceof UserAbort) {
             logger.debug(`user abort ${id}, msg: ${err.msg}`)
-            return {error: err.msg}
+            return {userError: err.msg}
           } else {
             if (!process.env.supressErrors) {
               logger.error(`Unknown error abort ${err} ${err.stack}`)
               console.error(err)
               console.error(err.stack)
             }
-            return {exception: `${err}`}
+            return {error: `${err}`}
           }
         }
         throw err
