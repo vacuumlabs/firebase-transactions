@@ -30,6 +30,8 @@ const userCount = 100
 const trCount = 1000
 ```
 
+Don't forget to change the Firebase URL to your Firebase instance. Although you can run the tutorial
+with this Firebase instance, you won't be able to inspect the DB in the admin interface.
 
 First, let's start with randomly populating db, this is pretty straightforward.
 ```javascript
@@ -98,6 +100,5 @@ transactor(firebase, {pay})
 
 Open the Firebase admin console and watch, as the users' accounts gets updated and transaction
 descriptors are moved to 'closed_transaction'
-
 
 
