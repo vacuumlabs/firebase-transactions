@@ -12,6 +12,8 @@ should give you nice overview of what this small library is capable.
 Let's start with some setup:
 __fragment__(setup)
 
+Don't forget to change the Firebase URL to your Firebase instance. Although you can run the tutorial
+with this Firebase instance, you won't be able to inspect the DB in the admin interface.
 
 First, let's start with randomly populating db, this is pretty straightforward.
 __fragment__(populate)

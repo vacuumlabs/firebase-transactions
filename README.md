@@ -4,6 +4,9 @@
 
 Firebase with transaction? Real transactions with all the ACID goodness? Well, almost.
 
+[Tutorial] (https://github.com/vacuumlabs/firebase-transactions/blob/master/tutorial.md)
+[Documentation] (https://github.com/vacuumlabs/firebase-transactions/blob/master/documentation.md)
+
 ## Rationale
 Firebase is doing great job in some aspects; but as Rich Hickey said: not everything is awesome.
 

@@ -33,6 +33,8 @@ for line in tutorial:
     else:
         lines.append(line)
 
-print('\n'.join(lines))
+out = open('tutorial.md', 'w')
+out.write('\n'.join(lines))
+out.close()
 
 

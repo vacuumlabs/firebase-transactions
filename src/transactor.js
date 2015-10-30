@@ -8,6 +8,9 @@ import {TODO_TRX_PATH, DONE_TRX_PATH, INTERNAL_TRX_PATH} from './settings'
 
 let logger = log4js.getLogger('transactor')
 
+// if the logging is not configured, use densible default
+// whether logging was configured or not is determined
+// by log4js.configured singleton
 function configureLogging() {
   if (!log4js.configured) {
     log4js.configure({
@@ -36,6 +39,67 @@ class UserAbort {
 }
 
 
+/***
+ * ## Server
+ *
+ * #### transactor(firebase, handlers, options = {})
+ *
+ *   Starts transactor.
+ *
+ *     args:
+ *       firebase: firebase ref
+ *       handlers: {String type: transaction_handler} map
+ *       options:
+ *         todoTrxRef: Firebase ref, where new transactions appear in Firebase
+ *         closedTrxRef: Firebase ref, where finished transactions are put
+ *         internalRef: Firebase ref, Transactor put pending writes here
+ *         trCountLimit: int, concurency ammount; how many transactions should be processed at once
+ *         rescheduleDelay: int, how long to wait (in ms) before re-scheduling aborted transaction
+ *
+ *     returns: handler = {stop, trSummary (for debug & test purposes)},
+ *
+ * #### stop()
+ *
+ *   Stops transactor
+ *
+ * #### transaction_handler({abort, change, push, read, set, update}, data)
+ *
+ *   User defined function, transaction handler associated to certain transaction type.
+ *
+ *   First argument are custom firebase-access functions that you can use to manipulate DB, the second argument is
+ *   'data' which corresponds to submitTransaction's 'data'. Author of transaction_handler must
+ *   return Promise that fulfills when the transaction is finished. If the Promise got rejected, the
+ *   transaction gets to the similar state as if it was aborted by user by calling 'abort'; the
+ *   Promise returned by submitTransaction will fulfill with {error: message}
+ *
+ * Most of Firebase-accessors functions accept keypath argument. Unlike Firebase reference, this is
+ * specified as a simple array of keys, i.e. ['user', 123, 'name'] may represent path to users name.
+ *
+ * #### read(keypath)
+ *   Reads the value.
+ *     returns: Promise(value_read)
+ *
+ * #### set(keypath, val)
+ *   Sets the value. This is synchronous process; transactor just remembers the write that should
+ *   happen. Returns nothing.
+ *
+ * #### push(keypath, val)
+ *   Analogous to Firebase's push
+ *
+ * #### change(keypath, fn)
+ *   Read the value from given location, then set this location to fn(value)
+ *
+ * #### update(keypath, obj)
+ *   Update the location's value with all k,v pair present in object obj. Since this is just a bunch
+ *   of sets, it's also synchronous operation.
+ *
+ * #### abort(msg)
+ * Aborts the transaction. None modification done will be saved to the DB, the transaction will be
+ * understood as finished and the transactor won't try to repeat it. The Promise returned by
+ * submitTransaction() call (on client side) will fulfill with {user_error: msg}
+ * Argument 'msg' is any object serializable by Firebase (ususally the simple String)
+ *
+ ***/
 export function transactor(firebase, handlers, options = {}) {
 
   const {
@@ -109,7 +173,6 @@ export function transactor(firebase, handlers, options = {}) {
         return handler({
           abort: userAbort,
           change: userChange,
-          getId: userGetId,
           push: userPush,
           read: userRead,
           set: userSet,
@@ -246,10 +309,6 @@ export function transactor(firebase, handlers, options = {}) {
       return ref
     }
 
-    function userGetId() {
-      return firebase.push().key()
-    }
-
     function userUpdate(path, values) {
       path = normalizePath(path)
       if ((values == null) || (values.constructor !== Object)) {
@@ -311,9 +370,9 @@ export function transactor(firebase, handlers, options = {}) {
     })
   })
 
+  // --end-transactor
   return {
     'stop': () => canStart.then((_) => todoTrxRef.off('child_added', onChildAdded)),
-    'registry': registry,
     'trSummary': trSummary,
   }
 
