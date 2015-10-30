@@ -34,6 +34,16 @@ describe('transactor', function() {
     }, {prefix: 'test'})
   })
 
+  it(`aborts`, () => {
+    return runSandboxed(globalFirebase, (firebase) => {
+      const submitTrx = getClient(firebase)
+      const abort = ({abort}, data) => {abort('not today')}
+      transactor(firebase, {abort})
+      return submitTrx('abort', {})
+        .then((res) => expect(res).to.deep.equal({userError: 'not today'}))
+    }, {prefix: 'test'})
+  })
+
   it(`handle throwing trx`, () => {
     return runSandboxed(globalFirebase, (firebase) => {
       process.env.supressErrors = true
