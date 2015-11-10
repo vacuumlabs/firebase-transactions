@@ -42,12 +42,14 @@ how can he actually transfer the funds?
 
 This is not a subtle issue; it's HUGE! You may spend months by happy hacking with Firebase and just
 a few days before initial release of your cool app, you may find out there is literally NO WAY how
-to secure the thing! Anyways, how would you secure
+to secure the thing!
 
 ## Firebase-Transactions in a nutshell
 - Client wants to do some transactional job
-- Instead of directly manipulating Firebase, client 'submits' transaction. More precisely, client
-writes transaction-descriptor-object into a specific Firebase 'collection'.
+- Instead of directly manipulating Firebase, client 'submits' action-descriptor. This object
+  describes what action client intends to do; more specifically, the object contains name of the
+  action and data, that are passed to the appropriate server-side handler (Flux-like-ness of such
+  design is not accidental :) ). Action-descriptor is pushed by client to the specific Firebase ref.
 - The server spots new transaction-descriptor and look for a correct handler
 - Once handler finishes doing transaction, the client is notified
 
@@ -92,6 +94,14 @@ A: If you don't, good for you! However, from our experience, transactional requi
 often. When this happens, the question only is, whether you can afford to ignore the faulty behavior
 if ignoring the issue.
 
+Q: Is there some best-practice how Firebase-Transactions should be used?
+
+A: Split your data into those that need transactional updates or complex validations (part 1) and the
+rest of them (part 2). Part 1 data should be editable only by transactor (i.e. not writable by any
+client). Part 2 data can be handled as it is now. Being so strict about part 1 may sound little bit
+too restrictive but usually it does not make sense to mix transactional and ad-hoc updates to a
+field.
+
 Q: In the beginning, you said that validations are even bigger problem, than achieving transactional
 behavior. How do I do validations when using Firebase-Transactions?
 
@@ -108,17 +118,17 @@ doing this?
 
 A: Although it probably is against Firebase religion, there is almost no negative when using
 Firebase-Transactions. One thing to note is that transactional changes are present on the client
-asynchronously - you won't observe them in the same event loop as you submit the transaction. In
+asynchronously - you won't observe them in the same event loop you submit the transaction. In
 other words, you should prepare your app for being in 'transaction submitted, awaiting results'
 state.
 
 Q: Why don't Firebase guys does not give their users such nice transactional behavior, if it is
 possible?
 
-A: I don't get that either. My guess is, they are trying to promote no-server style of
-doing apps and this violates the vision - you have to have server that runs your transactions. Since
-I don't see this as a burden, I'm happy with this solution.
-
+A: I don't get that either. My guess is, they are trying to promote no-server style of doing apps
+and this violates the vision as with this solution you have to run this server somewhere.
+Alternatively, you could submit the transaction handler to your Firebase settings but that would
+probably create more complexity. 
 
 ## License
 
