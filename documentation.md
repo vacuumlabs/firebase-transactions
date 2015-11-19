@@ -76,3 +76,6 @@ Aborts the transaction. None modification done will be saved to the DB, the tran
 understood as finished and the transactor won't try to repeat it. The Promise returned by
 submitTransaction() call (on client side) will fulfill with {userError: msg}
 Argument 'msg' is any object serializable by Firebase (ususally the simple String)
+
+#### getId()
+Convenience function, returns unique Firebase ID.

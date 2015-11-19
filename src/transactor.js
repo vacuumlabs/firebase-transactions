@@ -99,6 +99,9 @@ class UserAbort {
  * submitTransaction() call (on client side) will fulfill with {userError: msg}
  * Argument 'msg' is any object serializable by Firebase (ususally the simple String)
  *
+ * #### getId()
+ *   Convenience function, returns unique Firebase ID.
+ *
  ***/
 export function transactor(firebase, handlers, options = {}) {
 
@@ -173,6 +176,7 @@ export function transactor(firebase, handlers, options = {}) {
         return handler({
           abort: userAbort,
           change: userChange,
+          getId: userGetId,
           push: userPush,
           read: userRead,
           set: userSet,
@@ -325,6 +329,10 @@ export function transactor(firebase, handlers, options = {}) {
       return userRead(path)
         .then((val) => fn(val))
         .then((res) => userSet(path, res))
+    }
+
+    function userGetId() {
+      return firebase.push().key()
     }
   } // end processTr
 
