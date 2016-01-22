@@ -1,15 +1,28 @@
+## Tutorial
 
-This tutorial describes most functionality of Firebase-Transactions. We will create an example: 
+This tutorial describes most functionality of Firebase-Transactions. We will create an example:
 
 - First we generate 100 random users with different credits
-- Then we generate 1000 random transactions 
+- Then we generate 1000 random transactions
 - We start transactor and let those transactions be processed
 
 This is not a real-life example: the main difference is, that in real world, transactions
 would be put to Firebase from browser - as a result to some user interaction. However, the example
 should give you nice overview of what this small library is capable.
 
-Let's start with some setup:
+## Setting up the environment
+
+Let's start with some setup. Firebase-Transaction is written in Javascript, so you need `npm` to
+install and `node.js` to run the example. Furthermore, we'll use some cool `es6` and `es7` features
+throughout the code, so make sure, you've globally installed `babel-cli` (version ^6.x.x) such that
+`babel-node` cli command is working properly. You should also install and use `es-2015` presets and
+of course the Firebase-Transaction project irself. If you are not sure about the Babel setup, check
+out this fine [blog post] (http://babeljs.io/blog/2015/10/31/setting-up-babel-6/)
+
+## Let's get to work
+
+Let's define some constants and useful helpers
+
 __fragment__(setup)
 
 Don't forget to change the Firebase URL to your Firebase instance. Although you can run the tutorial

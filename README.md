@@ -2,14 +2,16 @@
 
 [![Circle CI](https://circleci.com/gh/vacuumlabs/firebase-transactions.svg?style=svg&circle-token=bd6366dee306c78c644fc6458085e673fe163723)](https://circleci.com/gh/vacuumlabs/firebase-transactions)
 
-Firebase with transaction? Real transactions with all the ACID goodness? Well, almost.
+Firebase with transaction? Real transactions with almost all of the ACID goodness? Coool.
 
 [Tutorial] (https://github.com/vacuumlabs/firebase-transactions/blob/master/wiki/tutorial.md)
 
 [Documentation] (https://github.com/vacuumlabs/firebase-transactions/blob/master/wiki/documentation.md)
 
 ## Rationale
-Firebase is doing great job in some aspects; but as Rich Hickey said: not everything is awesome.
+Firebase is doing great job syncing your data. But as we started developing bigger applications with it,
+we noticed, there are a few aspects of it, that we encounter over and over again. And always, they are the
+same pain in the elbow.
 
 #### Firebase has no proper transactions
 Ladies and gentlemen, say hello to the really old problem that
@@ -32,31 +34,33 @@ talking about! If only we have some transactional mechanism, that would allow us
 the business logic and take care of this unwanted additional complexity!
 
 #### Validating things is HARD
-Let's talk about the transfer-funds example a
-little more. Even if we somehow ignore non-transactional problems, far bigger problem exist! How do
-you set-up validation rules such that John can transfer funds to Emily?
+Let's talk about the transfer-funds example a little more. Even if we somehow ignore
+non-transactional problems, another problem exist! How do you set-up validation rules such that
+John can transfer funds to Emily?
 
 Normally, you'd expect John being able to read (and maybe under some circumstances, modify) his own
 account. Definitely, he shouldn't be able neither read nor write to other users accounts. But, then
 how can he actually transfer the funds?
 
-This is not a subtle issue; it's HUGE! You may spend months by happy hacking with Firebase and just
-a few days before initial release of your cool app, you may find out there is literally NO WAY how
-to secure the thing!
+This is not a subtle issue. You may spend months by happy hacking with Firebase and just
+a few days before the initial release of your cool app, you may find out that securing it may be
+really complicated, sometimes even not possible without doing some compromises such as denormalizing
+the data (even more) or getting rid of using useful indexes and thus compromising the speed of the app.
 
 ## Firebase-Transactions in a nutshell
-- Client wants to do some transactional job
+
+This is what happens, if client wants to do some transactional job:
+
 - Instead of directly manipulating Firebase, client 'submits' action-descriptor. This object
-  describes what action client intends to do; more specifically, the object contains name of the
-  action and data, that are passed to the appropriate server-side handler (Flux-like-ness of such
-  design is not accidental :) ). Action-descriptor is pushed by client to the specific Firebase ref.
+  describes what action client intends to do and typically also some data the action needs
+- Action-descriptor is pushed by client to the specific location within the Firebase
 - The server spots new transaction-descriptor and look for a correct handler
 - Once handler finishes doing transaction, the client is notified
 
 Look up the tutorial to see, how individual steps are implemented.
 
 
-## ACID What guarantees do you have when you write transaction-handler-code:
+## ACID, or what guarantees do you have when you write transaction-handler-code:
 - Transaction is either performed fully, or none at all (Atomicity)
 - While performing transaction A, transaction B can not read not-yet-committed writes of A. However,
   A can read it's own writes and got correct answers (Isolation)
@@ -129,6 +133,11 @@ A: I don't get that either. My guess is, they are trying to promote no-server st
 and this violates the vision as with this solution you have to run this server somewhere.
 Alternatively, you could submit the transaction handler to your Firebase settings but that would
 probably create more complexity. 
+
+Q: I'd like to integrate with some external, statefull API (payment processor). Any chance I can do
+something two-phase-commit-ty with this?
+
+A: I'd love to see a pull-request for this.
 
 ## License
 
