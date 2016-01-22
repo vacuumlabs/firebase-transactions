@@ -2,7 +2,7 @@ from collections import defaultdict
 import re
 
 tutorial = open('tutorial.md.source').read().split('\n')
-code = open('src/example/tutorial.js').read().split('\n')
+code = open('../src/example/tutorial.js').read().split('\n')
 
 remember = set()
 snipets = defaultdict(list)

@@ -1,6 +1,6 @@
 import re
 
-files = ['./src/client.js', './src/transactor.js']
+files = ['../src/client.js', '../src/transactor.js']
 
 res = []
 
