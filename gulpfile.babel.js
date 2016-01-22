@@ -30,7 +30,7 @@ gulp.task('test', (done) => runSequence('_test', 'end', done))
 gulp.task('build', function() {
   return gulp.src('src/**/*.js')
     .pipe(sourcemaps.init())
-    .pipe(babel({stage: 0}))
+    .pipe(babel())
     .pipe(sourcemaps.write('./'))
     .pipe(gulp.dest('dist'))
 })

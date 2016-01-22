@@ -23,7 +23,7 @@ export function fromJS(value) {
   return i.fromJS(value)
 }
 
-export function promisify(callback: Function) {
+export function promisify(callback) {
   return new Promise((resolve, reject) => {
     // On failure, the first argument will be an Error object indicating the
     // failure, with a machine-readable code attribute. On success, the first
