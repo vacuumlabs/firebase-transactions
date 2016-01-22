@@ -1,5 +1,5 @@
 import {expect} from 'chai'
-import {Registry} from '../registry'
+import {Registry} from '../lib/registry'
 import {is, Map, Set} from 'immutable'
 //import {Promise} from 'bluebird'
 

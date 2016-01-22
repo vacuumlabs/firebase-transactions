@@ -1,9 +1,9 @@
 import Firebase from 'firebase'
 import {expect} from 'chai'
-import {runSandboxed, set, read} from '../firebase_useful'
-import {getClient} from '../client'
-import {transactor} from '../transactor'
-import {firebaseUrl} from '../settings'
+import {runSandboxed, set, read} from '../lib/firebase_useful'
+import {getClient} from '../lib/client'
+import {transactor} from '../lib/transactor'
+import {firebaseUrl} from '../lib/settings'
 
 describe('transactor', function() {
 

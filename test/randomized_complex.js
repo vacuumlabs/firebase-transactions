@@ -1,9 +1,9 @@
 import {Promise} from 'bluebird'
 import {fromJS} from 'immutable'
-import {getClient} from '../client'
-import * as u from '../useful'
-import {transactor} from '../transactor'
-import {read, set} from '../firebase_useful'
+import {getClient} from '../lib/client'
+import * as u from '../lib/useful'
+import {transactor} from '../lib/transactor'
+import {read, set} from '../lib/firebase_useful'
 
 export function test(firebase, {trCount, baseCredit, maxTrCredit, userCount, maxWait}) {
 

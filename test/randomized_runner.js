@@ -1,10 +1,10 @@
 import Firebase from 'firebase'
 import {expect} from 'chai'
 import log4js from 'log4js'
-import {runSandboxed} from '../firebase_useful'
+import {runSandboxed} from '../lib/firebase_useful'
 import {test as testBasic} from './randomized_basic'
 import {test as testComplex} from './randomized_complex'
-import {firebaseUrl} from '../settings'
+import {firebaseUrl} from '../lib/settings'
 //import * as u from '../useful'
 
 const globalFirebase = new Firebase(firebaseUrl)
