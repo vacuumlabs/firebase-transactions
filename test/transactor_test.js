@@ -61,8 +61,9 @@ describe('transactor', function() {
   it(`recovers from fail`, () => {
     return runSandboxed(globalFirebase, (firebase) => {
       return set(firebase.child('__internal/writes'), {
-        aaa: {path: ['a', 'aa'], value: 'aaa'},
-        bbb: {path: ['b', 'bb'], value: 'bbb'},
+        aaa: [{path: ['a', 'aa'], value: 'aaa'},
+              {path: ['b', 'bb'], value: 'bbb'}],
+        bbb: [{path: ['c', 'cc'], value: 'ccc'}],
       }).then(() => {
         const handler = transactor(firebase, {})
         return handler.stop()
@@ -71,6 +72,8 @@ describe('transactor', function() {
       .then((res) => expect(res).to.deep.equal({aa: 'aaa'}))
       .then(() => read(firebase.child('b')))
       .then((res) => expect(res).to.deep.equal({bb: 'bbb'}))
+      .then(() => read(firebase.child('c')))
+      .then((res) => expect(res).to.deep.equal({cc: 'ccc'}))
     }, {prefix: 'test', deleteAfter: true})
   })
 

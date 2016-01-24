@@ -2,7 +2,7 @@ import {Promise} from 'bluebird'
 import {Registry} from './registry'
 import {Set} from 'immutable'
 import * as u from './useful'
-import {read, set, remove} from './firebase_useful'
+import {read, set, remove, push} from './firebase_useful'
 import log4js from 'log4js'
 import {TODO_TRX_PATH, DONE_TRX_PATH, INTERNAL_TRX_PATH} from './settings'
 
@@ -207,7 +207,7 @@ export function transactor(firebase, handlers, options = {}) {
           logger.debug(`FINISH: tr no ${id}`)
           let userAborted = runs[id].status === 'useraborted'
           let writes = userAborted ? [] : registry.writesByTrx.get(id, [])
-          let writesRef = internalWritesRef.child(id)
+          let writesRef = push(internalWritesRef, {})
           trSummary['processed'] += 1
           runs[id].status = 'finishing'
           set(writesRef, writes)
@@ -351,14 +351,21 @@ export function transactor(firebase, handlers, options = {}) {
   }
 
   const canStart = read(internalWritesRef)
-  .then((writes) => {
+  .then((writesl2) => {
     const waitForWrites = []
-    writes = writes || []
-    u.forEachKV(writes, (_, write) => {
-      waitForWrites.push(set(refFromPath(write.path), write.value))
+    writesl2 = writesl2 || {}
+    u.forEachKV(writesl2, (_, writesl1) => {
+      for (let write of writesl1) {
+        waitForWrites.push(set(refFromPath(write.path), write.value))
+      }
     })
     waitForWrites.push(set(internalWritesRef, null))
+    let msg = Object.keys(writesl2).length === 0 ?
+      'Clean start: no pending writes from previous session'
+        :
+      'Succesfully applied pending writes from the last session'
     return Promise.all(waitForWrites)
+      .then(() => logger.info(msg))
   })
 
 
