@@ -25,9 +25,9 @@ Let's define some constants and useful helpers
 
 ```javascript
 import Firebase from 'firebase'
-import {getClient} from 'firebase-transactions'
-import {transactor} from 'firebase-transactions'
-import {firebaseUseful} from 'firebase-transactions'
+import {getClient} from '../firebase-transactions'
+import {transactor} from '../firebase-transactions'
+import {firebaseUseful} from '../firebase-transactions'
 
 // promisified Firebase.set
 const {set} = firebaseUseful
