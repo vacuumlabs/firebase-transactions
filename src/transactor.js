@@ -115,8 +115,12 @@ export function transactor(firebase, handlers, options = {}) {
   } = options
 
   if (!log4js.configured) configureLogging()
+  if (options.logger) {
+    logger = options.logger
+  }
 
   const runs = {} // run id mapped to trData
+  const prohibited = {}
   const waiting = []
   const trSummary = {aborted: 0, tried: 0, processed: 0}
   const registry = new Registry()
@@ -183,7 +187,13 @@ export function transactor(firebase, handlers, options = {}) {
           update: userUpdate,
         }, data)
       })
+      .then((result) => {
+        prohibited[id] = true
+        setTimeout(() => {delete prohibited[id]}, 30000)
+        return result
+      })
       .catch((err) => {
+        prohibited[id] = true
         if (!(err instanceof AbortError)) {
           if (err instanceof UserAbort) {
             logger.debug(`user abort ${id}, msg: ${err.msg}`)
@@ -240,6 +250,9 @@ export function transactor(firebase, handlers, options = {}) {
       })
 
     function checkAbort() {
+      if (prohibited[id]) {
+        logger.warn('Unchained promise; you probably forgot to chain the promises in your transaction correctly.')
+      }
       if (runs[id] == null || runs[id].status === 'useraborted') {
         logger.debug('checkAbort: throwing abort')
         throw new AbortError('Transaction was aborted')

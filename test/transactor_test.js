@@ -4,6 +4,7 @@ import {runSandboxed, set, read} from '../lib/firebase_useful'
 import {getClient} from '../lib/client'
 import {transactor} from '../lib/transactor'
 import {firebaseUrl} from '../lib/settings'
+import {Promise} from 'bluebird'
 
 describe('transactor', function() {
 
@@ -77,4 +78,21 @@ describe('transactor', function() {
     }, {prefix: 'test', deleteAfter: true})
   })
 
+  // if user ends transaction but 'leaves behind' some (unchained) pending promises, reads and
+  // writes in these promises lead to warning user.
+  it(`warn on unchained promise`, () => {
+    return runSandboxed(globalFirebase, (firebase) => {
+      let seen = false
+      let f = (msg) => {
+        seen |= (msg.indexOf('Unchained promise') !== -1)
+      }
+      let dummyLogger = {info: f, debug: f, warn: f, trace: f, error: f, shout: f}
+      const submitTrx = getClient(firebase)
+      let unchained = ({read}, data) => {read(['a']).then(() => read(['b'])).catch((e) => null); return 'hello'}
+      transactor(firebase, {unchained}, {logger: dummyLogger})
+      return submitTrx('unchained', {})
+        .then(() => Promise.delay(1000))
+        .then(() => expect(seen).to.not.equal(false))
+    }, {prefix: 'test', deleteAfter: true})
+  })
 })
