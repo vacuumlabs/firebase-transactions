@@ -244,11 +244,6 @@ export function transactor(firebase, handlers, options = {}) {
         logger.debug('checkAbort: throwing abort')
         throw new AbortError('Transaction was aborted')
       }
-      if (runs[id] === 'useraborted') {
-        logger.debug('checkAbort: throwing useraborted')
-        throw new AbortError('Transaction was aborted')
-      }
-
     }
 
     function handlePossibleConflict(_conflict) {
