@@ -36,7 +36,8 @@ export function getClient(firebase, options = {}) {
         // after subscription, we first got 'null' value so
         // we have to ignore this
         if (snap.val() != null) {
-          resolve(snap.val().result)
+          let result = snap.val().result
+          resolve(result == null ? {} : result)
           resultRef.off('value', fn)
         }
       })
