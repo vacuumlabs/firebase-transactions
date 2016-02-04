@@ -9,11 +9,12 @@ Firebase with transaction? Real transactions with almost all of the ACID goodnes
 [Documentation] (https://github.com/vacuumlabs/firebase-transactions/blob/master/wiki/documentation.md)
 
 ## Rationale
-Firebase is doing great job syncing your data. But as we started developing bigger applications with it,
-we noticed, there are a few aspects of it, that we encounter over and over again. And always, they are the
-same pain in the elbow.
+Firebase is doing great job syncing your data, it provides as-easy-as-it-gets read and write API and
+it allows you to move blazingly fast with your project. Where's the catch? At least for us, as our
+projects grow bigger, every one of them has at least some small part of it, where the transactional behavior is
+highly desired. And transactional behavior is certainly not something Firebase is particularly good at.
 
-#### Firebase has no proper transactions
+#### The need for transactions
 Ladies and gentlemen, say hello to the really old problem that
 relational-database old-fashioned guys use to scare NoSQL cool-kids for almost an decade:
 transferring funds.
@@ -94,9 +95,10 @@ should be able to get even better results.
 
 Q: Do I really need this?
 
-A: If you don't, good for you! However, from our experience, transactional requirements arise surprisingly
-often. When this happens, the question only is, whether you can afford to ignore the faulty behavior
-if ignoring the issue.
+A: If you don't, good for you! However, from our experience, (at least) some transactional requirements arise
+in almost any bigger-than-hello-world app. Need to implement payments properly? Transaction. Need to
+conditionally update at two places at once? Transaction, probably. Your validation rules becomes too
+complex? Transaction can help.
 
 Q: Is there some best-practice how Firebase-Transactions should be used?
 
@@ -120,19 +122,9 @@ the transaction.
 Q: Isn't all of this against Firebase principles? Don't you lose all of the Firebase features, when
 doing this?
 
-A: Although it probably is against Firebase religion, there is almost no negative when using
-Firebase-Transactions. One thing to note is that transactional changes are present on the client
-asynchronously - you won't observe them in the same event loop you submit the transaction. In
-other words, you should prepare your app for being in 'transaction submitted, awaiting results'
-state.
-
-Q: Why don't Firebase guys does not give their users such nice transactional behavior, if it is
-possible?
-
-A: I don't get that either. My guess is, they are trying to promote no-server style of doing apps
-and this violates the vision as with this solution you have to run this server somewhere.
-Alternatively, you could submit the transaction handler to your Firebase settings but that would
-probably create more complexity. 
+A: Quite the opposite, such approach buys you the best from both worlds: you can get move really fast and
+get all the Firebase goodness on the majority of your data, while still being able to handle the
+mission-critical operations transactionally.
 
 Q: I'd like to integrate with some external, statefull API (payment processor). Any chance I can do
 something two-phase-commit-ty with this?
