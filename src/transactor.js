@@ -227,6 +227,10 @@ export function transactor(firebase, handlers, options = {}) {
           })
           let trData = runs[id]
           remove(writesRef)
+          // {result: undefined} cannot be put into Firebase. OTOH, {result: null} is ok.
+          if (result === undefined) {
+            result = null
+          }
           try {
             // TODO handle this better (some parts of result might get lost
             // here, so warn user about it)
