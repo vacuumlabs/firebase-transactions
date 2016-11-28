@@ -1,10 +1,9 @@
-import i from 'immutable'
-import Firebase from 'firebase'
 import {Promise} from 'bluebird'
+import Firebase from 'firebase'
 
 export function runSandboxed(firebase, fn, options = {}) {
   const {deleteAfter = true, prefix = ''} = options
-  let fbid = firebase.push().key()
+  let fbid = firebase.push().key
   let testId = `${prefix}${fbid}`
   let testRef = firebase.child(testId)
   return Promise.resolve()
@@ -16,11 +15,6 @@ export function runSandboxed(firebase, fn, options = {}) {
 
 export function toJS(value) {
   return (value && value.toJS) ? value.toJS() : value
-}
-
-export function fromJS(value) {
-  if (typeof value.val === 'function') value = value.val()
-  return i.fromJS(value)
 }
 
 export function promisify(callback) {
@@ -38,10 +32,10 @@ export function promisify(callback) {
   })
 }
 
-export function getAuth(ref) {return fromJS(ref.getAuth()) }
+export function getAuth(ref) {return ref.auth.currentUser}
 
 function _change(ref, method, value) {
-  if (!((arguments.length === 3) && (ref instanceof Firebase) && (typeof method === 'string'))) {
+  if (!((arguments.length === 3) && (typeof method === 'string'))) {
     throw new Error(`bad arguments for '_change' function, got ${ref} ${method} ${value}`)
   }
   return promisify((c) => ref[method](toJS(value), c))
@@ -60,7 +54,7 @@ export function once(ref, eventType) {
 }
 
 export function read(ref) {
-  if (!((arguments.length === 1) && (ref instanceof Firebase))) {
+  if (!((arguments.length === 1))) {
     throw new Error(`bad arguments for 'read' function, got ${arguments}`)
   }
   return new Promise((resolve, reject) => ref.once('value', (snap) => {resolve(snap.val())}, reject))
@@ -83,14 +77,24 @@ export function transact(transactionId, ref, updateFunction) {
   })
 }
 
-export function createUser(ref, credentials) {
-  return promisify((c) => ref.createUser(toJS(credentials), c))
+export function createUser(ref, _credentials) {
+  const credentials = toJS(_credentials)
+  return ref.auth.createUser
+    ? ref.auth.createUser(credentials)
+    : ref.auth.createUserWithEmailAndPassword(credentials.email, credentials.password)
 }
 
-export function authWithOAuthPopup(ref, provider, options) {
-  return promisify((c) => ref.authWithOAuthPopup(provider, c, toJS(options)))
+const providers = {
+  facebook: Firebase.auth.FacebookAuthProvider,
+  twitter: Firebase.auth.TwitterAuthProvider,
+  google: Firebase.auth.GoogleAuthProvider,
 }
 
-export function authWithPassword(ref, credentials, options) {
-  return promisify((c) => ref.authWithPassword(toJS(credentials), c, toJS(options)))
+export function authWithOAuthPopup(ref, provider) {
+  return Promise.resolve(ref.auth.signInWithPopup(new (providers[provider])()))
+}
+
+export function authWithPassword(ref, credentials) {
+  const {email, password} = toJS(credentials)
+  return Promise.resolve(ref.auth.signInWithEmailAndPassword(email, password))
 }

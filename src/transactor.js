@@ -321,7 +321,7 @@ export function transactor(firebase, handlers, options = {}) {
     function userPush(path, value) {
       path = normalizePath(path)
       let ref = refFromPath(path).push()
-      userSet([...path, ref.key()], value)
+      userSet([...path, ref.key], value)
       return ref
     }
 
@@ -344,7 +344,7 @@ export function transactor(firebase, handlers, options = {}) {
     }
 
     function userGetId() {
-      return firebase.push().key()
+      return firebase.push().key
     }
   } // end processTr
 
@@ -392,7 +392,7 @@ export function transactor(firebase, handlers, options = {}) {
       }
       trData.trId = nextTrId++
       logger.debug(`SCHEDULED: tr no ${trData.trId} data: ${JSON.stringify(trData)}`)
-      trData.frbId = childSnapshot.key()
+      trData.frbId = childSnapshot.key
       pushWaiting(trData)
     })
   })

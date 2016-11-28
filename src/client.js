@@ -29,7 +29,7 @@ export function getClient(firebase, options = {}) {
     doneTrxRef = firebase.child(DONE_TRX_PATH)
   } = options
   return (type, data) => {
-    const trxId = push(todoTrxRef, {type, data}).key()
+    const trxId = push(todoTrxRef, {type, data}).key
     let resultRef = doneTrxRef.child(trxId)
     return new Promise((resolve, reject) => {
       let fn = resultRef.on('value', (snap) => {
