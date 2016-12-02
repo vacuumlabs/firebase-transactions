@@ -287,8 +287,13 @@ export function transactor(firebase, handlers, options = {}) {
 
     function normalizePath(path) {
       if (u.isImmutable(path)) path = path.toJS()
-      if (u.isArray(path)) return path
-      throw new Error(`path must be an array or immutable list; got ${path} instead`)
+      if (!u.isArray(path)) {
+        throw new Error(`path must be an array or immutable list; got ${path} instead`)
+      }
+      if (!path.every((part) => typeof part === 'string' || u.isNumeric(part))) {
+        throw new Error(`path must be and array of strings or numbers; got ${path} instead`)
+      }
+      return path
     }
 
     // TODO if possible, make DB operations accept also firebase ref
